@@ -5,6 +5,7 @@ import AddBookingModal from './AddBookingModal';
 
 const BookingModal = ({ booking, isAdmin, onClose }) => {
   const [showEditModal, setShowEditModal] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   const formatDate = (date) => {
     return new Date(date).toLocaleDateString('ru-RU', {
@@ -15,13 +16,20 @@ const BookingModal = ({ booking, isAdmin, onClose }) => {
   };
 
   const handleDelete = async () => {
-    if (window.confirm('Вы уверены, что хотите удалить эту бронь?')) {
-      try {
-        await deleteDoc(doc(db, 'bookings', booking.id));
-        onClose();
-      } catch (error) {
-        alert('Ошибка при удалении: ' + error.message);
-      }
+    if (!window.confirm('Вы уверены, что хотите удалить эту бронь?')) {
+      return;
+    }
+
+    setDeleting(true);
+    try {
+      await deleteDoc(doc(db, 'bookings', booking.id));
+      console.log('Booking deleted successfully');
+      onClose();
+    } catch (error) {
+      console.error('Error deleting booking:', error);
+      alert('Ошибка при удалении: ' + error.message);
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -69,7 +77,7 @@ const BookingModal = ({ booking, isAdmin, onClose }) => {
                 {booking.comment && (
                   <div>
                     <label className="text-sm text-gray-600">Комментарий:</label>
-                    <p className="font-medium text-gray-800">{booking.comment}</p>
+                    <p className="font-medium text-gray-800 whitespace-pre-wrap">{booking.comment}</p>
                   </div>
                 )}
               </>
@@ -80,15 +88,17 @@ const BookingModal = ({ booking, isAdmin, onClose }) => {
             <div className="flex gap-2 mt-6">
               <button
                 onClick={() => setShowEditModal(true)}
-                className="flex-1 bg-yellow-600 text-white px-4 py-2 rounded-lg hover:bg-yellow-700 transition-colors"
+                disabled={deleting}
+                className="flex-1 bg-yellow-600 text-white px-4 py-2 rounded-lg hover:bg-yellow-700 transition-colors disabled:opacity-50"
               >
                 Редактировать
               </button>
               <button
                 onClick={handleDelete}
-                className="flex-1 bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors"
+                disabled={deleting}
+                className="flex-1 bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50"
               >
-                Удалить
+                {deleting ? 'Удаление...' : 'Удалить'}
               </button>
             </div>
           )}

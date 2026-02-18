@@ -21,22 +21,32 @@ const AddBookingModal = ({ isAdmin, onClose, editBooking, initialDates }) => {
   }, [isAdmin, onClose]);
 
   const checkDateOverlap = async (startDate, endDate, excludeId = null) => {
-    const bookingsRef = collection(db, 'bookings');
-    const q = query(bookingsRef);
-    const snapshot = await getDocs(q);
-    
-    const newStart = new Date(startDate);
-    const newEnd = new Date(endDate);
-    
-    return snapshot.docs.some(doc => {
-      if (excludeId && doc.id === excludeId) return false;
+    try {
+      const bookingsRef = collection(db, 'bookings');
+      const q = query(bookingsRef);
+      const snapshot = await getDocs(q);
       
-      const booking = doc.data();
-      const bookingStart = booking.startDate.toDate();
-      const bookingEnd = booking.endDate.toDate();
+      const newStart = new Date(startDate);
+      const newEnd = new Date(endDate);
       
-      return (newStart < bookingEnd && newEnd > bookingStart);
-    });
+      // Устанавливаем время в начало дня для корректного сравнения
+      newStart.setHours(0, 0, 0, 0);
+      newEnd.setHours(23, 59, 59, 999);
+      
+      return snapshot.docs.some(doc => {
+        if (excludeId && doc.id === excludeId) return false;
+        
+        const booking = doc.data();
+        const bookingStart = booking.startDate.toDate();
+        const bookingEnd = booking.endDate.toDate();
+        
+        // Проверяем пересечение дат
+        return (newStart <= bookingEnd && newEnd >= bookingStart);
+      });
+    } catch (error) {
+      console.error("Error checking overlap:", error);
+      return false;
+    }
   };
 
   const handleSubmit = async (e) => {
@@ -48,12 +58,29 @@ const AddBookingModal = ({ isAdmin, onClose, editBooking, initialDates }) => {
       const startDate = new Date(formData.startDate);
       const endDate = new Date(formData.endDate);
       
+      // Валидация дат
+      if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
+        setError('Неверный формат даты');
+        setLoading(false);
+        return;
+      }
+
       if (endDate <= startDate) {
         setError('Дата окончания должна быть позже даты начала');
         setLoading(false);
         return;
       }
 
+      // Проверка на прошедшие даты (только для новых броней)
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      if (!editBooking && startDate < today) {
+        setError('Нельзя создать бронь на прошедшую дату');
+        setLoading(false);
+        return;
+      }
+
+      // Проверка пересечения
       const hasOverlap = await checkDateOverlap(startDate, endDate, editBooking?.id);
       if (hasOverlap) {
         setError('Выбранные даты пересекаются с существующей бронью');
@@ -61,22 +88,34 @@ const AddBookingModal = ({ isAdmin, onClose, editBooking, initialDates }) => {
         return;
       }
 
+      // Подготовка данных для сохранения
       const bookingData = {
-        ...formData,
+        name: formData.name.trim(),
+        phone: formData.phone.trim(),
         startDate: Timestamp.fromDate(startDate),
         endDate: Timestamp.fromDate(endDate),
         guests: Number(formData.guests),
-        createdAt: editBooking?.createdAt ? Timestamp.fromDate(new Date(editBooking.createdAt)) : Timestamp.now()
+        comment: formData.comment.trim() || '',
+        createdAt: editBooking?.createdAt ? 
+          (typeof editBooking.createdAt === 'object' ? editBooking.createdAt : Timestamp.fromDate(new Date(editBooking.createdAt))) : 
+          Timestamp.now()
       };
 
+      console.log('Saving booking:', bookingData);
+
       if (editBooking) {
+        // Обновление существующей брони
         await updateDoc(doc(db, 'bookings', editBooking.id), bookingData);
+        console.log('Booking updated successfully');
       } else {
+        // Создание новой брони
         await addDoc(collection(db, 'bookings'), bookingData);
+        console.log('Booking added successfully');
       }
       
       onClose();
     } catch (error) {
+      console.error('Error saving booking:', error);
       setError('Ошибка при сохранении: ' + error.message);
     } finally {
       setLoading(false);
@@ -92,7 +131,7 @@ const AddBookingModal = ({ isAdmin, onClose, editBooking, initialDates }) => {
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-lg max-w-md w-full p-6">
+      <div className="bg-white rounded-lg max-w-md w-full p-6 max-h-[90vh] overflow-y-auto">
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-xl font-bold text-gray-800">
             {editBooking ? 'Редактировать бронь' : 'Новая бронь'}
@@ -152,6 +191,7 @@ const AddBookingModal = ({ isAdmin, onClose, editBooking, initialDates }) => {
               required
               value={formData.startDate}
               onChange={handleChange}
+              min={new Date().toISOString().split('T')[0]}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
@@ -166,6 +206,7 @@ const AddBookingModal = ({ isAdmin, onClose, editBooking, initialDates }) => {
               required
               value={formData.endDate}
               onChange={handleChange}
+              min={formData.startDate}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
@@ -179,6 +220,7 @@ const AddBookingModal = ({ isAdmin, onClose, editBooking, initialDates }) => {
               name="guests"
               required
               min="1"
+              max="10"
               value={formData.guests}
               onChange={handleChange}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -202,7 +244,7 @@ const AddBookingModal = ({ isAdmin, onClose, editBooking, initialDates }) => {
             <button
               type="submit"
               disabled={loading}
-              className="flex-1 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
+              className="flex-1 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {loading ? 'Сохранение...' : (editBooking ? 'Сохранить' : 'Добавить')}
             </button>

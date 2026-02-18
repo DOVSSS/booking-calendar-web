@@ -13,12 +13,11 @@ const Calendar = ({ isAdmin }) => {
   const [selectedBooking, setSelectedBooking] = useState(null);
   const [showAddModal, setShowAddModal] = useState(false);
   const [selectedDates, setSelectedDates] = useState(null);
-  const [connectionError, setConnectionError] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     setLoading(true);
-    setConnectionError(false);
     
     const q = query(collection(db, 'bookings'));
     
@@ -33,17 +32,12 @@ const Calendar = ({ isAdmin }) => {
         }));
         setBookings(bookingsData);
         setLoading(false);
-        setConnectionError(false);
+        setError(null);
       },
       (error) => {
-        console.error("Firestore connection error:", error);
-        setConnectionError(true);
+        console.error("Error loading bookings:", error);
+        setError(error.message);
         setLoading(false);
-        
-        // Пытаемся переподключиться через 5 секунд
-        setTimeout(() => {
-          setConnectionError(false);
-        }, 5000);
       }
     );
 
@@ -58,17 +52,11 @@ const Calendar = ({ isAdmin }) => {
     );
   }
 
-  if (connectionError) {
+  if (error) {
     return (
       <div className="flex justify-center items-center h-64">
-        <div className="text-center">
-          <div className="text-red-600 mb-4">Ошибка подключения к серверу</div>
-          <button 
-            onClick={() => window.location.reload()}
-            className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
-          >
-            Обновить страницу
-          </button>
+        <div className="text-center text-red-600">
+          Ошибка загрузки данных: {error}
         </div>
       </div>
     );
@@ -81,6 +69,7 @@ const Calendar = ({ isAdmin }) => {
     end: booking.endDate,
     backgroundColor: '#ef4444',
     borderColor: '#dc2626',
+    textColor: '#ffffff',
     extendedProps: booking,
   }));
 
@@ -141,7 +130,7 @@ const Calendar = ({ isAdmin }) => {
         )}
       </div>
 
-      <div className="bg-white rounded-lg shadow-lg p-3">
+      <div className="bg-white rounded-lg shadow-lg p-4">
         <FullCalendar
           plugins={[dayGridPlugin, interactionPlugin]}
           initialView="dayGridMonth"
@@ -158,6 +147,11 @@ const Calendar = ({ isAdmin }) => {
           height="auto"
           firstDay={1}
           eventDisplay="block"
+          eventTimeFormat={{
+            hour: '2-digit',
+            minute: '2-digit',
+            meridiem: false
+          }}
         />
       </div>
 

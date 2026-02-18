@@ -11,12 +11,15 @@ function App() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // Firebase автоматически восстанавливает сессию из localStorage
     const unsubscribe = auth.onAuthStateChanged(async (user) => {
       if (user) {
+        console.log("Session restored for:", user.email);
         const admin = await checkIsAdmin(user);
         setIsAdmin(admin);
         setUser(user);
       } else {
+        console.log("No active session");
         setIsAdmin(false);
         setUser(null);
       }

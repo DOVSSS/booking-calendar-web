@@ -1,13 +1,26 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { collection, addDoc, doc, updateDoc, query, getDocs, Timestamp } from 'firebase/firestore';
 import { db } from '../firebase/config';
 
-const AddBookingModal = ({ isAdmin, onClose, editBooking, initialDates }) => {
+const AddBookingModal = React.memo(({ isAdmin, onClose, editBooking, initialDates }) => {
+  // Форматирование даты для input datetime-local
+  const formatDateForInput = (date) => {
+    if (!date) return '';
+    const d = new Date(date);
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    const hours = String(d.getHours()).padStart(2, '0');
+    const minutes = String(d.getMinutes()).padStart(2, '0');
+    return `${year}-${month}-${day}T${hours}:${minutes}`;
+  };
+
+  // При редактировании показываем сохранённые даты, иначе — из initialDates
   const [formData, setFormData] = useState({
     name: editBooking?.name || '',
     phone: editBooking?.phone || '',
-    startDate: editBooking?.startDate ? new Date(editBooking.startDate).toISOString().split('T')[0] : initialDates?.start?.toISOString().split('T')[0] || '',
-    endDate: editBooking?.endDate ? new Date(editBooking.endDate).toISOString().split('T')[0] : initialDates?.end?.toISOString().split('T')[0] || '',
+    startDate: editBooking?.startDate ? formatDateForInput(editBooking.startDate) : (initialDates?.start ? formatDateForInput(initialDates.start) : ''),
+    endDate: editBooking?.endDate ? formatDateForInput(editBooking.endDate) : (initialDates?.end ? formatDateForInput(initialDates.end) : ''),
     guests: editBooking?.guests || 1,
     comment: editBooking?.comment || ''
   });
@@ -15,39 +28,27 @@ const AddBookingModal = ({ isAdmin, onClose, editBooking, initialDates }) => {
   const [error, setError] = useState('');
 
   useEffect(() => {
-    if (!isAdmin) {
-      onClose();
-    }
+    if (!isAdmin) onClose();
   }, [isAdmin, onClose]);
 
-  const checkDateOverlap = async (startDate, endDate, excludeId = null) => {
+  // Проверка пересечения броней (с учётом времени)
+  const checkOverlap = useCallback(async (start, end, excludeId = null) => {
     try {
-      const bookingsRef = collection(db, 'bookings');
-      const q = query(bookingsRef);
+      const q = query(collection(db, 'bookings'));
       const snapshot = await getDocs(q);
-      
-      const newStart = new Date(startDate);
-      const newEnd = new Date(endDate);
-      
-      // Устанавливаем время в начало дня для корректного сравнения
-      newStart.setHours(0, 0, 0, 0);
-      newEnd.setHours(23, 59, 59, 999);
-      
       return snapshot.docs.some(doc => {
         if (excludeId && doc.id === excludeId) return false;
-        
-        const booking = doc.data();
-        const bookingStart = booking.startDate.toDate();
-        const bookingEnd = booking.endDate.toDate();
-        
-        // Проверяем пересечение дат
-        return (newStart <= bookingEnd && newEnd >= bookingStart);
+        const b = doc.data();
+        const bStart = b.startDate.toDate();
+        const bEnd = b.endDate.toDate();
+        // Пересечение: новый интервал касается существующего
+        return start < bEnd && end > bStart;
       });
-    } catch (error) {
-      console.error("Error checking overlap:", error);
+    } catch (err) {
+      console.error('Overlap check error:', err);
       return false;
     }
-  };
+  }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -55,40 +56,32 @@ const AddBookingModal = ({ isAdmin, onClose, editBooking, initialDates }) => {
     setLoading(true);
 
     try {
+      // Создаём объекты Date из строк формы
       const startDate = new Date(formData.startDate);
       const endDate = new Date(formData.endDate);
-      
-      // Валидация дат
-      if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
-        setError('Неверный формат даты');
-        setLoading(false);
-        return;
-      }
 
+      // Устанавливаем фиксированное время:
+      // Заезд всегда в 14:00, выезд всегда в 11:00 (независимо от того, что ввёл пользователь)
+      startDate.setHours(14, 0, 0, 0);
+      endDate.setHours(11, 0, 0, 0);
+
+      // Если дата выезда <= даты заезда, добавляем один день (минимальная длительность — 1 ночь)
       if (endDate <= startDate) {
-        setError('Дата окончания должна быть позже даты начала');
-        setLoading(false);
-        return;
+        endDate.setDate(endDate.getDate() + 1);
       }
 
-      // Проверка на прошедшие даты (только для новых броней)
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      if (!editBooking && startDate < today) {
-        setError('Нельзя создать бронь на прошедшую дату');
-        setLoading(false);
-        return;
+      // Валидация минимальной длительности (не меньше 1 ночи)
+      const minStay = 24 * 60 * 60 * 1000; // 24 часа
+      if (endDate - startDate < minStay) {
+        throw new Error('Минимальный срок бронирования — 1 ночь');
       }
 
-      // Проверка пересечения
-      const hasOverlap = await checkDateOverlap(startDate, endDate, editBooking?.id);
+      // Проверка пересечений
+      const hasOverlap = await checkOverlap(startDate, endDate, editBooking?.id);
       if (hasOverlap) {
-        setError('Выбранные даты пересекаются с существующей бронью');
-        setLoading(false);
-        return;
+        throw new Error('Это время уже занято');
       }
 
-      // Подготовка данных для сохранения
       const bookingData = {
         name: formData.name.trim(),
         phone: formData.phone.trim(),
@@ -96,38 +89,28 @@ const AddBookingModal = ({ isAdmin, onClose, editBooking, initialDates }) => {
         endDate: Timestamp.fromDate(endDate),
         guests: Number(formData.guests),
         comment: formData.comment.trim() || '',
-        createdAt: editBooking?.createdAt ? 
-          (typeof editBooking.createdAt === 'object' ? editBooking.createdAt : Timestamp.fromDate(new Date(editBooking.createdAt))) : 
-          Timestamp.now()
+        createdAt: editBooking?.createdAt
+          ? (typeof editBooking.createdAt === 'object' ? editBooking.createdAt : Timestamp.fromDate(new Date(editBooking.createdAt)))
+          : Timestamp.now()
       };
 
-      console.log('Saving booking:', bookingData);
-
       if (editBooking) {
-        // Обновление существующей брони
         await updateDoc(doc(db, 'bookings', editBooking.id), bookingData);
-        console.log('Booking updated successfully');
       } else {
-        // Создание новой брони
         await addDoc(collection(db, 'bookings'), bookingData);
-        console.log('Booking added successfully');
       }
-      
       onClose();
-    } catch (error) {
-      console.error('Error saving booking:', error);
-      setError('Ошибка при сохранении: ' + error.message);
+    } catch (err) {
+      setError(err.message);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleChange = (e) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value
-    });
-  };
+  const handleChange = useCallback((e) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+  }, []);
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
@@ -136,10 +119,7 @@ const AddBookingModal = ({ isAdmin, onClose, editBooking, initialDates }) => {
           <h2 className="text-xl font-bold text-gray-800">
             {editBooking ? 'Редактировать бронь' : 'Новая бронь'}
           </h2>
-          <button
-            onClick={onClose}
-            className="text-gray-500 hover:text-gray-700"
-          >
+          <button onClick={onClose} className="text-gray-500 hover:text-gray-700">
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
             </svg>
@@ -154,9 +134,7 @@ const AddBookingModal = ({ isAdmin, onClose, editBooking, initialDates }) => {
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Имя *
-            </label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Имя *</label>
             <input
               type="text"
               name="name"
@@ -168,9 +146,7 @@ const AddBookingModal = ({ isAdmin, onClose, editBooking, initialDates }) => {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Телефон *
-            </label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Телефон *</label>
             <input
               type="tel"
               name="phone"
@@ -182,39 +158,41 @@ const AddBookingModal = ({ isAdmin, onClose, editBooking, initialDates }) => {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Дата заезда *
-            </label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Дата заезда *</label>
             <input
               type="date"
               name="startDate"
               required
-              value={formData.startDate}
-              onChange={handleChange}
-              min={new Date().toISOString().split('T')[0]}
+              value={formData.startDate.split('T')[0]} // показываем только дату
+              onChange={(e) => {
+                // при изменении даты добавляем время 14:00 (но оно всё равно будет перезаписано в handleSubmit)
+                const newDate = e.target.value + 'T14:00';
+                setFormData(prev => ({ ...prev, startDate: newDate }));
+              }}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
+            <p className="text-xs text-gray-500 mt-1">Заезд в 14:00</p>
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Дата выезда *
-            </label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Дата выезда *</label>
             <input
               type="date"
               name="endDate"
               required
-              value={formData.endDate}
-              onChange={handleChange}
-              min={formData.startDate}
+              value={formData.endDate.split('T')[0]}
+              min={formData.startDate?.split('T')[0]}
+              onChange={(e) => {
+                const newDate = e.target.value + 'T11:00';
+                setFormData(prev => ({ ...prev, endDate: newDate }));
+              }}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
+            <p className="text-xs text-gray-500 mt-1">Выезд до 11:00</p>
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Количество гостей *
-            </label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Количество гостей *</label>
             <input
               type="number"
               name="guests"
@@ -228,9 +206,7 @@ const AddBookingModal = ({ isAdmin, onClose, editBooking, initialDates }) => {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Комментарий
-            </label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Комментарий</label>
             <textarea
               name="comment"
               rows="3"
@@ -260,6 +236,7 @@ const AddBookingModal = ({ isAdmin, onClose, editBooking, initialDates }) => {
       </div>
     </div>
   );
-};
+});
 
+AddBookingModal.displayName = 'AddBookingModal';
 export default AddBookingModal;

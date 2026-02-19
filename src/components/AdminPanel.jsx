@@ -1,59 +1,58 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { loginAdmin, logoutAdmin } from '../firebase/auth';
 
-const AdminPanel = ({ isAdmin, setIsAdmin, user, setUser }) => {
+const AdminPanel = React.memo(({ isAdmin, setIsAdmin, user, setUser }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [showLoginForm, setShowLoginForm] = useState(false);
 
-  // Загружаем сохраненный email из localStorage при монтировании
   useEffect(() => {
     const savedEmail = localStorage.getItem('adminEmail');
-    if (savedEmail) {
-      setEmail(savedEmail);
-    }
+    if (savedEmail) setEmail(savedEmail);
   }, []);
 
-  const handleLogin = async (e) => {
+  const handleLogin = useCallback(async (e) => {
     e.preventDefault();
     setError('');
     setLoading(true);
 
     const { user, error } = await loginAdmin(email, password);
-    
     if (error) {
       setError('Ошибка входа: ' + error);
     } else {
-      // Сохраняем email в localStorage
-      localStorage.setItem('adminEmail', email);
-      
-      setUser(user);
-      setIsAdmin(true);
-      setShowLoginForm(false);
-      setPassword(''); // очищаем пароль из безопасности
+      // Принудительно обновляем токен и проверяем права
+      await user.getIdToken(true);
+      const tokenResult = await user.getIdTokenResult();
+      if (tokenResult.claims.admin === true) {
+        localStorage.setItem('adminEmail', email);
+        setUser(user);
+        setIsAdmin(true);
+        setShowLoginForm(false);
+        setPassword('');
+      } else {
+        setError('У вас нет прав администратора');
+        await logoutAdmin();
+      }
     }
-    
     setLoading(false);
-  };
+  }, [email, password, setIsAdmin, setUser]);
 
-  const handleLogout = async () => {
+  const handleLogout = useCallback(async () => {
     const { error } = await logoutAdmin();
-    if (error) {
-      alert('Ошибка при выходе: ' + error);
-    } else {
+    if (error) alert('Ошибка при выходе: ' + error);
+    else {
       setUser(null);
       setIsAdmin(false);
-      // Очищаем пароль, но email оставляем
       setPassword('');
     }
-  };
+  }, [setIsAdmin, setUser]);
 
-  const handleClearSavedEmail = () => {
+  const clearSavedEmail = useCallback(() => {
     localStorage.removeItem('adminEmail');
     setEmail('');
-  };
+  }, []);
 
   if (isAdmin && user) {
     return (
@@ -65,10 +64,7 @@ const AdminPanel = ({ isAdmin, setIsAdmin, user, setUser }) => {
             </svg>
             <span className="text-sm">Администратор: {user.email}</span>
           </div>
-          <button
-            onClick={handleLogout}
-            className="text-sm text-gray-600 hover:text-gray-800 flex items-center gap-1"
-          >
+          <button onClick={handleLogout} className="text-sm text-gray-600 hover:text-gray-800 flex items-center gap-1">
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
             </svg>
@@ -83,10 +79,7 @@ const AdminPanel = ({ isAdmin, setIsAdmin, user, setUser }) => {
     <div className="bg-white shadow-sm border-b">
       <div className="container mx-auto px-4 py-3">
         {!showLoginForm ? (
-          <button
-            onClick={() => setShowLoginForm(true)}
-            className="flex items-center gap-2 text-gray-600 hover:text-gray-800"
-          >
+          <button onClick={() => setShowLoginForm(true)} className="flex items-center gap-2 text-gray-600 hover:text-gray-800">
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
             </svg>
@@ -97,23 +90,15 @@ const AdminPanel = ({ isAdmin, setIsAdmin, user, setUser }) => {
             <form onSubmit={handleLogin} className="space-y-3">
               <div className="flex justify-between items-center">
                 <h3 className="text-sm font-medium text-gray-700">Вход администратора</h3>
-                <button
-                  type="button"
-                  onClick={() => setShowLoginForm(false)}
-                  className="text-gray-400 hover:text-gray-600"
-                >
+                <button type="button" onClick={() => setShowLoginForm(false)} className="text-gray-400 hover:text-gray-600">
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                   </svg>
                 </button>
               </div>
 
-              {error && (
-                <div className="p-2 bg-red-100 text-red-700 text-sm rounded">
-                  {error}
-                </div>
-              )}
-              
+              {error && <div className="p-2 bg-red-100 text-red-700 text-sm rounded">{error}</div>}
+
               <div className="space-y-2">
                 <div className="relative">
                   <input
@@ -127,7 +112,7 @@ const AdminPanel = ({ isAdmin, setIsAdmin, user, setUser }) => {
                   {email && (
                     <button
                       type="button"
-                      onClick={handleClearSavedEmail}
+                      onClick={clearSavedEmail}
                       className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
                       title="Очистить сохраненный email"
                     >
@@ -137,7 +122,6 @@ const AdminPanel = ({ isAdmin, setIsAdmin, user, setUser }) => {
                     </button>
                   )}
                 </div>
-                
                 <input
                   type="password"
                   placeholder="Пароль"
@@ -147,7 +131,7 @@ const AdminPanel = ({ isAdmin, setIsAdmin, user, setUser }) => {
                   required
                 />
               </div>
-              
+
               <div className="flex gap-2">
                 <button
                   type="submit"
@@ -170,6 +154,7 @@ const AdminPanel = ({ isAdmin, setIsAdmin, user, setUser }) => {
       </div>
     </div>
   );
-};
+});
 
+AdminPanel.displayName = 'AdminPanel';
 export default AdminPanel;

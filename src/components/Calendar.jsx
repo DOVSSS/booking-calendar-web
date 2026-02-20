@@ -8,7 +8,7 @@ import { db } from '../firebase/config';
 import BookingModal from './BookingModal';
 import AddBookingModal from './AddBookingModal';
 
-const Calendar = React.memo(({ isAdmin }) => {
+const Calendar = React.memo(() => {
   const [bookings, setBookings] = useState([]);
   const [selectedBooking, setSelectedBooking] = useState(null);
   const [showAddModal, setShowAddModal] = useState(false);
@@ -43,67 +43,32 @@ const Calendar = React.memo(({ isAdmin }) => {
     return () => unsubscribe();
   }, []);
 
-  // Преобразуем брони в события для календаря
   const events = useMemo(() => {
     return bookings.flatMap(booking => {
       const start = new Date(booking.startDate);
       const end = new Date(booking.endDate);
       const eventsList = [];
 
-      // День заезда (с 14:00 до 24:00)
-      const firstDayEnd = new Date(start);
-      firstDayEnd.setHours(23, 59, 59, 999);
-      eventsList.push({
-        id: `${booking.id}-day1`,
-        title: '🔸 Заезд',
-        start: start,
-        end: firstDayEnd,
-        backgroundColor: '#ef4444',
-        borderColor: '#dc2626',
-        textColor: '#ffffff',
-        allDay: false,
-        extendedProps: { ...booking, part: 'first' }
-      });
+      let current = new Date(start);
+      current.setHours(0, 0, 0, 0);
+      const last = new Date(end);
+      last.setHours(0, 0, 0, 0);
 
-      // Полные дни между (если есть)
-      const nextDay = new Date(start);
-      nextDay.setDate(nextDay.getDate() + 1);
-      nextDay.setHours(0, 0, 0, 0);
-
-      const lastDay = new Date(end);
-      lastDay.setHours(0, 0, 0, 0);
-
-      let current = new Date(nextDay);
-      while (current < lastDay) {
+      while (current < last) {
         const dayEnd = new Date(current);
         dayEnd.setHours(23, 59, 59, 999);
         eventsList.push({
           id: `${booking.id}-${current.toISOString()}`,
-          title: '🟥 Занято',
+          title: 'Занято',
           start: new Date(current),
           end: dayEnd,
           backgroundColor: '#ef4444',
           borderColor: '#dc2626',
           textColor: '#ffffff',
           allDay: true,
-          extendedProps: { ...booking, part: 'full' }
+          extendedProps: booking
         });
         current.setDate(current.getDate() + 1);
-      }
-
-      // День выезда (00:00 до 11:00)
-      if (lastDay < end) {
-        eventsList.push({
-          id: `${booking.id}-lastday`,
-          title: '🔹 Выезд',
-          start: new Date(lastDay),
-          end: end, // end уже содержит время 11:00
-          backgroundColor: '#ef4444',
-          borderColor: '#dc2626',
-          textColor: '#ffffff',
-          allDay: false,
-          extendedProps: { ...booking, part: 'last' }
-        });
       }
 
       return eventsList;
@@ -113,31 +78,54 @@ const Calendar = React.memo(({ isAdmin }) => {
   const handleDateClick = useCallback((info) => {
     const clickedDate = info.date;
 
-    // Проверяем, попадает ли дата в какую-либо бронь
-    const booking = bookings.find(b =>
-      clickedDate >= b.startDate && clickedDate < b.endDate
-    );
+    const booking = bookings.find(b => {
+      const start = new Date(b.startDate);
+      const end = new Date(b.endDate);
+      
+      const startDay = new Date(start);
+      startDay.setHours(0, 0, 0, 0);
+      const endDay = new Date(end);
+      endDay.setHours(0, 0, 0, 0);
+      const clickedDay = new Date(clickedDate);
+      clickedDay.setHours(0, 0, 0, 0);
+      
+      return clickedDay >= startDay && clickedDay < endDay;
+    });
 
     if (booking) {
-      setSelectedBooking(booking);
-    } else if (isAdmin) {
-      // Новая бронь: заезд в 14:00 выбранного дня, выезд на следующий день в 11:00
+      const endDay = new Date(booking.endDate);
+      endDay.setHours(0, 0, 0, 0);
+      const clickedDay = new Date(clickedDate);
+      clickedDay.setHours(0, 0, 0, 0);
+
+      if (clickedDay.getTime() === endDay.getTime()) {
+        // День выезда — форма для новой брони
+        const newStartDate = new Date(clickedDate);
+        newStartDate.setHours(14, 0, 0, 0);
+        const newEndDate = new Date(clickedDate);
+        newEndDate.setDate(newEndDate.getDate() + 1);
+        newEndDate.setHours(11, 0, 0, 0);
+        setSelectedDates({ start: newStartDate, end: newEndDate });
+        setShowAddModal(true);
+      } else {
+        // День заезда или промежуточный — данные клиента
+        setSelectedBooking(booking);
+      }
+    } else {
+      // Свободный день — форма для новой брони
       const startDate = new Date(clickedDate);
       startDate.setHours(14, 0, 0, 0);
-
       const endDate = new Date(clickedDate);
       endDate.setDate(endDate.getDate() + 1);
       endDate.setHours(11, 0, 0, 0);
-
       setSelectedDates({ start: startDate, end: endDate });
       setShowAddModal(true);
     }
-  }, [bookings, isAdmin]);
+  }, [bookings]);
 
   const handleEventClick = useCallback((info) => {
-    // Показываем модалку с полной информацией о брони (используем extendedProps)
-    setSelectedBooking(info.event.extendedProps);
-  }, []);
+    handleDateClick({ date: info.event.start });
+  }, [handleDateClick]);
 
   const handleCloseModal = useCallback(() => {
     setSelectedBooking(null);
@@ -183,17 +171,15 @@ const Calendar = React.memo(({ isAdmin }) => {
     <div className="p-4">
       <div className="mb-4 flex justify-between items-center">
         <h1 className="text-2xl font-bold text-gray-800">Календарь бронирования</h1>
-        {isAdmin && (
-          <button
-            onClick={handleAddClick}
-            className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
-          >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-            </svg>
-            Добавить бронь
-          </button>
-        )}
+        <button
+          onClick={handleAddClick}
+          className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
+        >
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+          </svg>
+          Добавить бронь
+        </button>
       </div>
 
       <div className="bg-white rounded-lg shadow-lg p-4">
@@ -213,22 +199,19 @@ const Calendar = React.memo(({ isAdmin }) => {
           height="auto"
           firstDay={1}
           eventDisplay="block"
-          displayEventTime={false} // скрываем время внутри ячейки (и так понятно)
-          allDaySlot={false}
+          displayEventTime={false}
         />
       </div>
 
       {selectedBooking && (
         <BookingModal
           booking={selectedBooking}
-          isAdmin={isAdmin}
           onClose={handleCloseModal}
         />
       )}
 
       {showAddModal && (
         <AddBookingModal
-          isAdmin={isAdmin}
           onClose={handleCloseAddModal}
           initialDates={selectedDates}
         />

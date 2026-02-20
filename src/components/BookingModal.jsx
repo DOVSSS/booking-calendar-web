@@ -3,7 +3,7 @@ import { doc, deleteDoc } from 'firebase/firestore';
 import { db } from '../firebase/config';
 import AddBookingModal from './AddBookingModal';
 
-const BookingModal = React.memo(({ booking, isAdmin, onClose }) => {
+const BookingModal = React.memo(({ booking, onClose }) => {
   const [showEditModal, setShowEditModal] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
@@ -21,11 +21,6 @@ const BookingModal = React.memo(({ booking, isAdmin, onClose }) => {
     if (!window.confirm('Вы уверены, что хотите удалить эту бронь?')) return;
     setDeleting(true);
     try {
-      // Принудительно обновляем токен (на случай устаревших прав)
-      if (isAdmin) {
-        // У пользователя может не быть метода getIdToken, но он есть у объекта user из auth
-        // Здесь booking — это объект брони, не пользователь. Поэтому пропускаем.
-      }
       await deleteDoc(doc(db, 'bookings', booking.id));
       onClose();
     } catch (error) {
@@ -34,7 +29,7 @@ const BookingModal = React.memo(({ booking, isAdmin, onClose }) => {
     } finally {
       setDeleting(false);
     }
-  }, [booking, isAdmin, onClose]);
+  }, [booking, onClose]);
 
   const handleEdit = useCallback(() => setShowEditModal(true), []);
 
@@ -69,50 +64,43 @@ const BookingModal = React.memo(({ booking, isAdmin, onClose }) => {
               <p className="text-xs text-gray-500">(до 11:00)</p>
             </div>
 
-            {isAdmin && (
-              <>
-                <div>
-                  <label className="text-sm text-gray-600">Телефон:</label>
-                  <p className="font-medium text-gray-800">{booking.phone}</p>
-                </div>
-                <div>
-                  <label className="text-sm text-gray-600">Гостей:</label>
-                  <p className="font-medium text-gray-800">{booking.guests}</p>
-                </div>
-                {booking.comment && (
-                  <div>
-                    <label className="text-sm text-gray-600">Комментарий:</label>
-                    <p className="font-medium text-gray-800 whitespace-pre-wrap">{booking.comment}</p>
-                  </div>
-                )}
-              </>
+            <div>
+              <label className="text-sm text-gray-600">Телефон:</label>
+              <p className="font-medium text-gray-800">{booking.phone}</p>
+            </div>
+            <div>
+              <label className="text-sm text-gray-600">Гостей:</label>
+              <p className="font-medium text-gray-800">{booking.guests}</p>
+            </div>
+            {booking.comment && (
+              <div>
+                <label className="text-sm text-gray-600">Комментарий:</label>
+                <p className="font-medium text-gray-800 whitespace-pre-wrap">{booking.comment}</p>
+              </div>
             )}
           </div>
 
-          {isAdmin && (
-            <div className="flex gap-2 mt-6">
-              <button
-                onClick={handleEdit}
-                disabled={deleting}
-                className="flex-1 bg-yellow-600 text-white px-4 py-2 rounded-lg hover:bg-yellow-700 disabled:opacity-50"
-              >
-                Редактировать
-              </button>
-              <button
-                onClick={handleDelete}
-                disabled={deleting}
-                className="flex-1 bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 disabled:opacity-50"
-              >
-                {deleting ? 'Удаление...' : 'Удалить'}
-              </button>
-            </div>
-          )}
+          <div className="flex gap-2 mt-6">
+            <button
+              onClick={handleEdit}
+              disabled={deleting}
+              className="flex-1 bg-yellow-600 text-white px-4 py-2 rounded-lg hover:bg-yellow-700 disabled:opacity-50"
+            >
+              Редактировать
+            </button>
+            <button
+              onClick={handleDelete}
+              disabled={deleting}
+              className="flex-1 bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 disabled:opacity-50"
+            >
+              {deleting ? 'Удаление...' : 'Удалить'}
+            </button>
+          </div>
         </div>
       </div>
 
       {showEditModal && (
         <AddBookingModal
-          isAdmin={isAdmin}
           onClose={() => {
             setShowEditModal(false);
             onClose();

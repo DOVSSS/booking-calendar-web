@@ -2,20 +2,16 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { collection, addDoc, doc, updateDoc, query, getDocs, Timestamp } from 'firebase/firestore';
 import { db } from '../firebase/config';
 
-const AddBookingModal = React.memo(({ isAdmin, onClose, editBooking, initialDates }) => {
-  // Форматирование даты для input datetime-local
+const AddBookingModal = React.memo(({ onClose, editBooking, initialDates }) => {
   const formatDateForInput = (date) => {
     if (!date) return '';
     const d = new Date(date);
     const year = d.getFullYear();
     const month = String(d.getMonth() + 1).padStart(2, '0');
     const day = String(d.getDate()).padStart(2, '0');
-    const hours = String(d.getHours()).padStart(2, '0');
-    const minutes = String(d.getMinutes()).padStart(2, '0');
-    return `${year}-${month}-${day}T${hours}:${minutes}`;
+    return `${year}-${month}-${day}`; // только дата, без времени
   };
 
-  // При редактировании показываем сохранённые даты, иначе — из initialDates
   const [formData, setFormData] = useState({
     name: editBooking?.name || '',
     phone: editBooking?.phone || '',
@@ -27,11 +23,6 @@ const AddBookingModal = React.memo(({ isAdmin, onClose, editBooking, initialDate
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  useEffect(() => {
-    if (!isAdmin) onClose();
-  }, [isAdmin, onClose]);
-
-  // Проверка пересечения броней (с учётом времени)
   const checkOverlap = useCallback(async (start, end, excludeId = null) => {
     try {
       const q = query(collection(db, 'bookings'));
@@ -41,7 +32,6 @@ const AddBookingModal = React.memo(({ isAdmin, onClose, editBooking, initialDate
         const b = doc.data();
         const bStart = b.startDate.toDate();
         const bEnd = b.endDate.toDate();
-        // Пересечение: новый интервал касается существующего
         return start < bEnd && end > bStart;
       });
     } catch (err) {
@@ -56,22 +46,17 @@ const AddBookingModal = React.memo(({ isAdmin, onClose, editBooking, initialDate
     setLoading(true);
 
     try {
-      // Создаём объекты Date из строк формы
-      const startDate = new Date(formData.startDate);
-      const endDate = new Date(formData.endDate);
+      // Создаём даты из строк (только дата, без времени)
+      const startDate = new Date(formData.startDate + 'T14:00:00'); // заезд в 14:00
+      const endDate = new Date(formData.endDate + 'T11:00:00');     // выезд в 11:00
 
-      // Устанавливаем фиксированное время:
-      // Заезд всегда в 14:00, выезд всегда в 11:00 (независимо от того, что ввёл пользователь)
-      startDate.setHours(14, 0, 0, 0);
-      endDate.setHours(11, 0, 0, 0);
-
-      // Если дата выезда <= даты заезда, добавляем один день (минимальная длительность — 1 ночь)
+      // Проверка, что endDate не меньше startDate
       if (endDate <= startDate) {
-        endDate.setDate(endDate.getDate() + 1);
+        throw new Error('Дата выезда должна быть позже даты заезда');
       }
 
-      // Валидация минимальной длительности (не меньше 1 ночи)
-      const minStay = 24 * 60 * 60 * 1000; // 24 часа
+      // Проверка минимального срока — 1 ночь (20 часов, с запасом)
+      const minStay = 20 * 60 * 60 * 1000; // 20 часов (с 14:00 до 11:00 следующего дня — это 21 час)
       if (endDate - startDate < minStay) {
         throw new Error('Минимальный срок бронирования — 1 ночь');
       }
@@ -163,12 +148,8 @@ const AddBookingModal = React.memo(({ isAdmin, onClose, editBooking, initialDate
               type="date"
               name="startDate"
               required
-              value={formData.startDate.split('T')[0]} // показываем только дату
-              onChange={(e) => {
-                // при изменении даты добавляем время 14:00 (но оно всё равно будет перезаписано в handleSubmit)
-                const newDate = e.target.value + 'T14:00';
-                setFormData(prev => ({ ...prev, startDate: newDate }));
-              }}
+              value={formData.startDate}
+              onChange={handleChange}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
             <p className="text-xs text-gray-500 mt-1">Заезд в 14:00</p>
@@ -180,12 +161,9 @@ const AddBookingModal = React.memo(({ isAdmin, onClose, editBooking, initialDate
               type="date"
               name="endDate"
               required
-              value={formData.endDate.split('T')[0]}
-              min={formData.startDate?.split('T')[0]}
-              onChange={(e) => {
-                const newDate = e.target.value + 'T11:00';
-                setFormData(prev => ({ ...prev, endDate: newDate }));
-              }}
+              value={formData.endDate}
+              min={formData.startDate}
+              onChange={handleChange}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
             <p className="text-xs text-gray-500 mt-1">Выезд до 11:00</p>

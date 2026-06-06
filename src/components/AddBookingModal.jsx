@@ -9,7 +9,7 @@ const AddBookingModal = React.memo(({ onClose, editBooking, initialDates }) => {
     const year = d.getFullYear();
     const month = String(d.getMonth() + 1).padStart(2, '0');
     const day = String(d.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`; // только дата, без времени
+    return `${year}-${month}-${day}`;
   };
 
   const [formData, setFormData] = useState({
@@ -17,7 +17,8 @@ const AddBookingModal = React.memo(({ onClose, editBooking, initialDates }) => {
     phone: editBooking?.phone || '',
     startDate: editBooking?.startDate ? formatDateForInput(editBooking.startDate) : (initialDates?.start ? formatDateForInput(initialDates.start) : ''),
     endDate: editBooking?.endDate ? formatDateForInput(editBooking.endDate) : (initialDates?.end ? formatDateForInput(initialDates.end) : ''),
-    guests: editBooking?.guests || 1,
+    prepayment: editBooking?.prepayment !== undefined ? editBooking.prepayment : 0,
+    finalPayment: editBooking?.finalPayment !== undefined ? editBooking.finalPayment : 0,
     comment: editBooking?.comment || ''
   });
   const [loading, setLoading] = useState(false);
@@ -40,39 +41,58 @@ const AddBookingModal = React.memo(({ onClose, editBooking, initialDates }) => {
     }
   }, []);
 
+  // Функция для безопасного преобразования в число
+  const safeParseNumber = (value) => {
+    if (value === undefined || value === null || value === '') return 0;
+    // Если это уже число, возвращаем его
+    if (typeof value === 'number') return value;
+    // Удаляем все пробелы и заменяем запятую на точку
+    const cleanValue = String(value).replace(/\s/g, '').replace(',', '.');
+    const parsed = parseFloat(cleanValue);
+    return isNaN(parsed) ? 0 : Math.floor(parsed); // отбрасываем копейки
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
     setLoading(true);
 
     try {
-      // Создаём даты из строк (только дата, без времени)
-      const startDate = new Date(formData.startDate + 'T14:00:00'); // заезд в 14:00
-      const endDate = new Date(formData.endDate + 'T11:00:00');     // выезд в 11:00
+      const startDate = new Date(formData.startDate + 'T14:00:00');
+      const endDate = new Date(formData.endDate + 'T11:00:00');
 
-      // Проверка, что endDate не меньше startDate
       if (endDate <= startDate) {
         throw new Error('Дата выезда должна быть позже даты заезда');
       }
 
-      // Проверка минимального срока — 1 ночь (20 часов, с запасом)
-      const minStay = 20 * 60 * 60 * 1000; // 20 часов (с 14:00 до 11:00 следующего дня — это 21 час)
+      const minStay = 20 * 60 * 60 * 1000;
       if (endDate - startDate < minStay) {
         throw new Error('Минимальный срок бронирования — 1 ночь');
       }
 
-      // Проверка пересечений
       const hasOverlap = await checkOverlap(startDate, endDate, editBooking?.id);
       if (hasOverlap) {
         throw new Error('Это время уже занято');
       }
+
+      // ✅ БЕЗОПАСНОЕ ПРЕОБРАЗОВАНИЕ СУММ
+      const prepaymentAmount = safeParseNumber(formData.prepayment);
+      const finalPaymentAmount = safeParseNumber(formData.finalPayment);
+
+      console.log('💰 Сохраняемые суммы:', {
+        исходная_предоплата: formData.prepayment,
+        преобразованная_предоплата: prepaymentAmount,
+        исходная_доплата: formData.finalPayment,
+        преобразованная_доплата: finalPaymentAmount
+      });
 
       const bookingData = {
         name: formData.name.trim(),
         phone: formData.phone.trim(),
         startDate: Timestamp.fromDate(startDate),
         endDate: Timestamp.fromDate(endDate),
-        guests: Number(formData.guests),
+        prepayment: prepaymentAmount,
+        finalPayment: finalPaymentAmount,
         comment: formData.comment.trim() || '',
         createdAt: editBooking?.createdAt
           ? (typeof editBooking.createdAt === 'object' ? editBooking.createdAt : Timestamp.fromDate(new Date(editBooking.createdAt)))
@@ -94,7 +114,15 @@ const AddBookingModal = React.memo(({ onClose, editBooking, initialDates }) => {
 
   const handleChange = useCallback((e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+    
+    // Для числовых полей очищаем от нечисловых символов
+    if (name === 'prepayment' || name === 'finalPayment') {
+      // Разрешаем только цифры
+      const cleanValue = value.replace(/[^\d]/g, '');
+      setFormData(prev => ({ ...prev, [name]: cleanValue }));
+    } else {
+      setFormData(prev => ({ ...prev, [name]: value }));
+    }
   }, []);
 
   return (
@@ -170,17 +198,35 @@ const AddBookingModal = React.memo(({ onClose, editBooking, initialDates }) => {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Количество гостей *</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Предоплата (₽)
+            </label>
             <input
-              type="number"
-              name="guests"
-              required
-              min="1"
-              max="10"
-              value={formData.guests}
+              type="text"
+              name="prepayment"
+              inputMode="numeric"
+              value={formData.prepayment}
               onChange={handleChange}
+              placeholder="0"
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
+            <p className="text-xs text-gray-500 mt-1">Только цифры</p>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Доплата при въезде (₽)
+            </label>
+            <input
+              type="text"
+              name="finalPayment"
+              inputMode="numeric"
+              value={formData.finalPayment}
+              onChange={handleChange}
+              placeholder="0"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+            <p className="text-xs text-gray-500 mt-1">Только цифры</p>
           </div>
 
           <div>

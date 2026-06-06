@@ -7,6 +7,8 @@ import { collection, onSnapshot, query } from 'firebase/firestore';
 import { db } from '../firebase/config';
 import BookingModal from './BookingModal';
 import AddBookingModal from './AddBookingModal';
+import ExpensesWidget from './ExpensesWidget';
+import TodosWidget from './TodosWidget';
 
 const Calendar = React.memo(() => {
   const [bookings, setBookings] = useState([]);
@@ -15,6 +17,8 @@ const Calendar = React.memo(() => {
   const [selectedDates, setSelectedDates] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [currentMonth, setCurrentMonth] = useState(new Date());
+  const [monthlyIncome, setMonthlyIncome] = useState({ total: 0, prepayment: 0, finalPayment: 0 });
 
   useEffect(() => {
     setLoading(true);
@@ -28,6 +32,8 @@ const Calendar = React.memo(() => {
           startDate: doc.data().startDate?.toDate(),
           endDate: doc.data().endDate?.toDate(),
           createdAt: doc.data().createdAt?.toDate(),
+          prepayment: doc.data().prepayment || 0,
+          finalPayment: doc.data().finalPayment || 0,
         }));
         setBookings(bookingsData);
         setLoading(false);
@@ -41,6 +47,33 @@ const Calendar = React.memo(() => {
     );
 
     return () => unsubscribe();
+  }, []);
+
+  // Расчёт дохода за текущий месяц
+  useEffect(() => {
+    const year = currentMonth.getFullYear();
+    const month = currentMonth.getMonth();
+    
+    const monthStart = new Date(year, month, 1);
+    const monthEnd = new Date(year, month + 1, 0, 23, 59, 59, 999);
+
+    const monthBookings = bookings.filter(booking => {
+      const startDate = new Date(booking.startDate);
+      return startDate >= monthStart && startDate <= monthEnd;
+    });
+
+    const totalPrepayment = monthBookings.reduce((sum, b) => sum + (b.prepayment || 0), 0);
+    const totalFinalPayment = monthBookings.reduce((sum, b) => sum + (b.finalPayment || 0), 0);
+    
+    setMonthlyIncome({
+      total: totalPrepayment + totalFinalPayment,
+      prepayment: totalPrepayment,
+      finalPayment: totalFinalPayment
+    });
+  }, [bookings, currentMonth]);
+
+  const handleDatesSet = useCallback((arg) => {
+    setCurrentMonth(arg.start);
   }, []);
 
   const events = useMemo(() => {
@@ -99,7 +132,6 @@ const Calendar = React.memo(() => {
       clickedDay.setHours(0, 0, 0, 0);
 
       if (clickedDay.getTime() === endDay.getTime()) {
-        // День выезда — форма для новой брони
         const newStartDate = new Date(clickedDate);
         newStartDate.setHours(14, 0, 0, 0);
         const newEndDate = new Date(clickedDate);
@@ -108,11 +140,9 @@ const Calendar = React.memo(() => {
         setSelectedDates({ start: newStartDate, end: newEndDate });
         setShowAddModal(true);
       } else {
-        // День заезда или промежуточный — данные клиента
         setSelectedBooking(booking);
       }
     } else {
-      // Свободный день — форма для новой брони
       const startDate = new Date(clickedDate);
       startDate.setHours(14, 0, 0, 0);
       const endDate = new Date(clickedDate);
@@ -136,11 +166,6 @@ const Calendar = React.memo(() => {
     setSelectedDates(null);
   }, []);
 
-  const handleAddClick = useCallback(() => {
-    setSelectedDates(null);
-    setShowAddModal(true);
-  }, []);
-
   const isDatePast = useCallback((date) => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -150,6 +175,10 @@ const Calendar = React.memo(() => {
   const dayCellClassNames = useCallback((arg) => {
     return isDatePast(arg.date) ? ['past-date'] : [];
   }, [isDatePast]);
+
+  const formatMoney = (amount) => {
+    return new Intl.NumberFormat('ru-RU', { style: 'currency', currency: 'RUB', minimumFractionDigits: 0 }).format(amount);
+  };
 
   if (loading) {
     return (
@@ -169,17 +198,30 @@ const Calendar = React.memo(() => {
 
   return (
     <div className="p-4">
-      <div className="mb-4 flex justify-between items-center">
-        <h1 className="text-2xl font-bold text-gray-800">Календарь бронирования</h1>
-        <button
-          onClick={handleAddClick}
-          className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
-        >
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-          </svg>
-          Добавить бронь
-        </button>
+      {/* Блок с месячным доходом */}
+      <div className="mb-6 bg-gradient-to-r from-blue-500 to-blue-600 rounded-lg shadow-lg p-4 text-white">
+        <div className="flex flex-col md:flex-row justify-between items-center gap-4">
+          <div>
+            <h2 className="text-sm font-medium opacity-90">Доход за {currentMonth.toLocaleString('ru-RU', { month: 'long', year: 'numeric' })}</h2>
+            <p className="text-3xl font-bold">{formatMoney(monthlyIncome.total)}</p>
+          </div>
+          <div className="flex gap-6 text-sm">
+            <div>
+              <div className="opacity-80">Предоплаты</div>
+              <div className="font-semibold text-lg">{formatMoney(monthlyIncome.prepayment)}</div>
+            </div>
+            <div>
+              <div className="opacity-80">При въезде</div>
+              <div className="font-semibold text-lg">{formatMoney(monthlyIncome.finalPayment)}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="flex justify-between items-center mb-4">
+        <ExpensesWidget currentMonth={currentMonth} />
+        
+        <TodosWidget />
       </div>
 
       <div className="bg-white rounded-lg shadow-lg p-4">
@@ -191,10 +233,11 @@ const Calendar = React.memo(() => {
           dateClick={handleDateClick}
           eventClick={handleEventClick}
           dayCellClassNames={dayCellClassNames}
+          datesSet={handleDatesSet}
           headerToolbar={{
-            left: 'prev,next today',
+            left: 'prev,next',
             center: 'title',
-            right: 'dayGridMonth,dayGridWeek'
+            right: ''
           }}
           height="auto"
           firstDay={1}

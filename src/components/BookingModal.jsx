@@ -17,6 +17,10 @@ const BookingModal = React.memo(({ booking, onClose }) => {
     });
   };
 
+  const formatMoney = (amount) => {
+    return new Intl.NumberFormat('ru-RU', { style: 'currency', currency: 'RUB', minimumFractionDigits: 0 }).format(amount);
+  };
+
   const handleDelete = useCallback(async () => {
     if (!window.confirm('Вы уверены, что хотите удалить эту бронь?')) return;
     setDeleting(true);
@@ -32,6 +36,8 @@ const BookingModal = React.memo(({ booking, onClose }) => {
   }, [booking, onClose]);
 
   const handleEdit = useCallback(() => setShowEditModal(true), []);
+
+  const totalPayment = (booking.prepayment || 0) + (booking.finalPayment || 0);
 
   return (
     <>
@@ -53,6 +59,11 @@ const BookingModal = React.memo(({ booking, onClose }) => {
             </div>
 
             <div>
+              <label className="text-sm text-gray-600">Телефон:</label>
+              <p className="font-medium text-gray-800">{booking.phone}</p>
+            </div>
+
+            <div>
               <label className="text-sm text-gray-600">Заезд:</label>
               <p className="font-medium text-gray-800">{formatDateTime(booking.startDate)}</p>
               <p className="text-xs text-gray-500">(после 14:00)</p>
@@ -64,14 +75,24 @@ const BookingModal = React.memo(({ booking, onClose }) => {
               <p className="text-xs text-gray-500">(до 11:00)</p>
             </div>
 
-            <div>
-              <label className="text-sm text-gray-600">Телефон:</label>
-              <p className="font-medium text-gray-800">{booking.phone}</p>
+            <div className="border-t pt-2 mt-2">
+              <label className="text-sm font-semibold text-gray-700">Финансы:</label>
+              <div className="mt-1 space-y-1">
+                <p className="text-sm">
+                  <span className="text-gray-600">Предоплата:</span>{' '}
+                  <span className="font-medium text-green-600">{formatMoney(booking.prepayment || 0)}</span>
+                </p>
+                <p className="text-sm">
+                  <span className="text-gray-600">Доплата при въезде:</span>{' '}
+                  <span className="font-medium text-blue-600">{formatMoney(booking.finalPayment || 0)}</span>
+                </p>
+                <p className="text-sm pt-1 border-t">
+                  <span className="font-semibold text-gray-700">Общая сумма:</span>{' '}
+                  <span className="font-bold text-gray-900">{formatMoney(totalPayment)}</span>
+                </p>
+              </div>
             </div>
-            <div>
-              <label className="text-sm text-gray-600">Гостей:</label>
-              <p className="font-medium text-gray-800">{booking.guests}</p>
-            </div>
+
             {booking.comment && (
               <div>
                 <label className="text-sm text-gray-600">Комментарий:</label>

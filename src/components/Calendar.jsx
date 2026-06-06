@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import FullCalendar from '@fullcalendar/react';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import interactionPlugin from '@fullcalendar/interaction';
@@ -17,8 +17,10 @@ const Calendar = React.memo(() => {
   const [selectedDates, setSelectedDates] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [currentMonth, setCurrentMonth] = useState(new Date());
+  const [currentYear, setCurrentYear] = useState(new Date().getFullYear());
+  const [currentMonth, setCurrentMonth] = useState(new Date().getMonth());
   const [monthlyIncome, setMonthlyIncome] = useState({ total: 0, prepayment: 0, finalPayment: 0 });
+  const calendarRef = useRef(null);
 
   useEffect(() => {
     setLoading(true);
@@ -51,11 +53,11 @@ const Calendar = React.memo(() => {
 
   // Расчёт дохода за текущий месяц
   useEffect(() => {
-    const year = currentMonth.getFullYear();
-    const month = currentMonth.getMonth();
+    if (currentYear === undefined || currentMonth === undefined) return;
     
-    const monthStart = new Date(year, month, 1);
-    const monthEnd = new Date(year, month + 1, 0, 23, 59, 59, 999);
+    const monthStart = new Date(currentYear, currentMonth, 1);
+    monthStart.setHours(0, 0, 0, 0);
+    const monthEnd = new Date(currentYear, currentMonth + 1, 0, 23, 59, 59, 999);
 
     const monthBookings = bookings.filter(booking => {
       const startDate = new Date(booking.startDate);
@@ -70,11 +72,31 @@ const Calendar = React.memo(() => {
       prepayment: totalPrepayment,
       finalPayment: totalFinalPayment
     });
-  }, [bookings, currentMonth]);
+  }, [bookings, currentYear, currentMonth]);
 
-  const handleDatesSet = useCallback((arg) => {
-    setCurrentMonth(arg.start);
-  }, []);
+  const handlePrevMonth = () => {
+    if (calendarRef.current) {
+      const calendarApi = calendarRef.current.getApi();
+      calendarApi.prev();
+      setTimeout(() => {
+        const date = calendarApi.getDate();
+        setCurrentYear(date.getFullYear());
+        setCurrentMonth(date.getMonth());
+      }, 50);
+    }
+  };
+
+  const handleNextMonth = () => {
+    if (calendarRef.current) {
+      const calendarApi = calendarRef.current.getApi();
+      calendarApi.next();
+      setTimeout(() => {
+        const date = calendarApi.getDate();
+        setCurrentYear(date.getFullYear());
+        setCurrentMonth(date.getMonth());
+      }, 50);
+    }
+  };
 
   const events = useMemo(() => {
     return bookings.flatMap(booking => {
@@ -109,7 +131,10 @@ const Calendar = React.memo(() => {
   }, [bookings]);
 
   const handleDateClick = useCallback((info) => {
-    const clickedDate = info.date;
+    
+    
+    const clickedDate = new Date(info.date);
+    clickedDate.setHours(0, 0, 0, 0);
 
     const booking = bookings.find(b => {
       const start = new Date(b.startDate);
@@ -119,19 +144,18 @@ const Calendar = React.memo(() => {
       startDay.setHours(0, 0, 0, 0);
       const endDay = new Date(end);
       endDay.setHours(0, 0, 0, 0);
-      const clickedDay = new Date(clickedDate);
-      clickedDay.setHours(0, 0, 0, 0);
       
-      return clickedDay >= startDay && clickedDay < endDay;
+      return clickedDate >= startDay && clickedDate < endDay;
     });
+
+   
 
     if (booking) {
       const endDay = new Date(booking.endDate);
       endDay.setHours(0, 0, 0, 0);
-      const clickedDay = new Date(clickedDate);
-      clickedDay.setHours(0, 0, 0, 0);
-
-      if (clickedDay.getTime() === endDay.getTime()) {
+      
+      if (clickedDate.getTime() === endDay.getTime()) {
+       
         const newStartDate = new Date(clickedDate);
         newStartDate.setHours(14, 0, 0, 0);
         const newEndDate = new Date(clickedDate);
@@ -139,10 +163,14 @@ const Calendar = React.memo(() => {
         newEndDate.setHours(11, 0, 0, 0);
         setSelectedDates({ start: newStartDate, end: newEndDate });
         setShowAddModal(true);
+        setSelectedBooking(null);
       } else {
+      
         setSelectedBooking(booking);
+        setShowAddModal(false);
       }
     } else {
+     
       const startDate = new Date(clickedDate);
       startDate.setHours(14, 0, 0, 0);
       const endDate = new Date(clickedDate);
@@ -150,18 +178,22 @@ const Calendar = React.memo(() => {
       endDate.setHours(11, 0, 0, 0);
       setSelectedDates({ start: startDate, end: endDate });
       setShowAddModal(true);
+      setSelectedBooking(null);
     }
   }, [bookings]);
 
   const handleEventClick = useCallback((info) => {
+   
     handleDateClick({ date: info.event.start });
   }, [handleDateClick]);
 
   const handleCloseModal = useCallback(() => {
+   
     setSelectedBooking(null);
   }, []);
 
   const handleCloseAddModal = useCallback(() => {
+   
     setShowAddModal(false);
     setSelectedDates(null);
   }, []);
@@ -179,6 +211,13 @@ const Calendar = React.memo(() => {
   const formatMoney = (amount) => {
     return new Intl.NumberFormat('ru-RU', { style: 'currency', currency: 'RUB', minimumFractionDigits: 0 }).format(amount);
   };
+
+  const monthNames = ['январь', 'февраль', 'март', 'апрель', 'май', 'июнь', 'июль', 'август', 'сентябрь', 'октябрь', 'ноябрь', 'декабрь'];
+
+  // Отладка состояния модалок
+  useEffect(() => {
+   
+  }, [selectedBooking, showAddModal]);
 
   if (loading) {
     return (
@@ -198,11 +237,10 @@ const Calendar = React.memo(() => {
 
   return (
     <div className="p-4">
-      {/* Блок с месячным доходом */}
       <div className="mb-6 bg-gradient-to-r from-blue-500 to-blue-600 rounded-lg shadow-lg p-4 text-white">
         <div className="flex flex-col md:flex-row justify-between items-center gap-4">
           <div>
-            <h2 className="text-sm font-medium opacity-90">Доход за {currentMonth.toLocaleString('ru-RU', { month: 'long', year: 'numeric' })}</h2>
+            <h2 className="text-sm font-medium opacity-90">Доход за {monthNames[currentMonth]} {currentYear}</h2>
             <p className="text-3xl font-bold">{formatMoney(monthlyIncome.total)}</p>
           </div>
           <div className="flex gap-6 text-sm">
@@ -219,13 +257,14 @@ const Calendar = React.memo(() => {
       </div>
 
       <div className="flex justify-between items-center mb-4">
-        <ExpensesWidget currentMonth={currentMonth} />
+        <ExpensesWidget year={currentYear} month={currentMonth} />
         
         <TodosWidget />
       </div>
 
       <div className="bg-white rounded-lg shadow-lg p-4">
         <FullCalendar
+          ref={calendarRef}
           plugins={[dayGridPlugin, interactionPlugin]}
           initialView="dayGridMonth"
           locale={ruLocale}
@@ -233,12 +272,7 @@ const Calendar = React.memo(() => {
           dateClick={handleDateClick}
           eventClick={handleEventClick}
           dayCellClassNames={dayCellClassNames}
-          datesSet={handleDatesSet}
-          headerToolbar={{
-            left: 'prev,next',
-            center: 'title',
-            right: ''
-          }}
+          headerToolbar={false}
           height="auto"
           firstDay={1}
           eventDisplay="block"
@@ -246,6 +280,31 @@ const Calendar = React.memo(() => {
         />
       </div>
 
+      <div className="flex justify-center items-center gap-6 mt-4">
+        <button
+          onClick={handlePrevMonth}
+          className="bg-gray-200 hover:bg-gray-300 text-gray-700 w-10 h-10 rounded-full transition-colors flex items-center justify-center"
+          aria-label="Предыдущий месяц"
+        >
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+          </svg>
+        </button>
+        <span className="text-lg font-semibold text-gray-800 min-w-[140px] text-center">
+          {monthNames[currentMonth]} {currentYear}
+        </span>
+        <button
+          onClick={handleNextMonth}
+          className="bg-gray-200 hover:bg-gray-300 text-gray-700 w-10 h-10 rounded-full transition-colors flex items-center justify-center"
+          aria-label="Следующий месяц"
+        >
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+          </svg>
+        </button>
+      </div>
+
+      {/* Модальные окна - явно выводим даже если null для отладки */}
       {selectedBooking && (
         <BookingModal
           booking={selectedBooking}

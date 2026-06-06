@@ -41,15 +41,12 @@ const AddBookingModal = React.memo(({ onClose, editBooking, initialDates }) => {
     }
   }, []);
 
-  // Функция для безопасного преобразования в число
   const safeParseNumber = (value) => {
     if (value === undefined || value === null || value === '') return 0;
-    // Если это уже число, возвращаем его
     if (typeof value === 'number') return value;
-    // Удаляем все пробелы и заменяем запятую на точку
     const cleanValue = String(value).replace(/\s/g, '').replace(',', '.');
     const parsed = parseFloat(cleanValue);
-    return isNaN(parsed) ? 0 : Math.floor(parsed); // отбрасываем копейки
+    return isNaN(parsed) ? 0 : Math.floor(parsed);
   };
 
   const handleSubmit = async (e) => {
@@ -75,16 +72,8 @@ const AddBookingModal = React.memo(({ onClose, editBooking, initialDates }) => {
         throw new Error('Это время уже занято');
       }
 
-      // ✅ БЕЗОПАСНОЕ ПРЕОБРАЗОВАНИЕ СУММ
       const prepaymentAmount = safeParseNumber(formData.prepayment);
       const finalPaymentAmount = safeParseNumber(formData.finalPayment);
-
-      console.log('💰 Сохраняемые суммы:', {
-        исходная_предоплата: formData.prepayment,
-        преобразованная_предоплата: prepaymentAmount,
-        исходная_доплата: formData.finalPayment,
-        преобразованная_доплата: finalPaymentAmount
-      });
 
       const bookingData = {
         name: formData.name.trim(),
@@ -114,10 +103,7 @@ const AddBookingModal = React.memo(({ onClose, editBooking, initialDates }) => {
 
   const handleChange = useCallback((e) => {
     const { name, value } = e.target;
-    
-    // Для числовых полей очищаем от нечисловых символов
     if (name === 'prepayment' || name === 'finalPayment') {
-      // Разрешаем только цифры
       const cleanValue = value.replace(/[^\d]/g, '');
       setFormData(prev => ({ ...prev, [name]: cleanValue }));
     } else {
@@ -126,26 +112,26 @@ const AddBookingModal = React.memo(({ onClose, editBooking, initialDates }) => {
   }, []);
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-lg max-w-md w-full p-6 max-h-[90vh] overflow-y-auto">
-        <div className="flex justify-between items-center mb-4">
-          <h2 className="text-xl font-bold text-gray-800">
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-3 z-50">
+      <div className="bg-white rounded-xl w-full max-w-md max-h-[90vh] overflow-y-auto shadow-2xl">
+        <div className="sticky top-0 bg-white border-b px-5 py-4 flex justify-between items-center">
+          <h2 className="text-lg font-bold text-gray-800">
             {editBooking ? 'Редактировать бронь' : 'Новая бронь'}
           </h2>
-          <button onClick={onClose} className="text-gray-500 hover:text-gray-700">
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 transition-colors">
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
             </svg>
           </button>
         </div>
 
-        {error && (
-          <div className="mb-4 p-3 bg-red-100 text-red-700 rounded-lg">
-            {error}
-          </div>
-        )}
+        <form onSubmit={handleSubmit} className="p-5 space-y-4">
+          {error && (
+            <div className="p-3 bg-red-50 text-red-600 text-sm rounded-lg">
+              {error}
+            </div>
+          )}
 
-        <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Имя *</label>
             <input
@@ -154,7 +140,8 @@ const AddBookingModal = React.memo(({ onClose, editBooking, initialDates }) => {
               required
               value={formData.name}
               onChange={handleChange}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-base"
+              placeholder="Введите имя"
             />
           </div>
 
@@ -166,7 +153,8 @@ const AddBookingModal = React.memo(({ onClose, editBooking, initialDates }) => {
               required
               value={formData.phone}
               onChange={handleChange}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-base"
+              placeholder="+7 900 123-45-67"
             />
           </div>
 
@@ -178,9 +166,9 @@ const AddBookingModal = React.memo(({ onClose, editBooking, initialDates }) => {
               required
               value={formData.startDate}
               onChange={handleChange}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-base"
             />
-            <p className="text-xs text-gray-500 mt-1">Заезд в 14:00</p>
+            <p className="text-xs text-gray-500 mt-1">🕐 Заезд в 14:00</p>
           </div>
 
           <div>
@@ -192,15 +180,13 @@ const AddBookingModal = React.memo(({ onClose, editBooking, initialDates }) => {
               value={formData.endDate}
               min={formData.startDate}
               onChange={handleChange}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-base"
             />
-            <p className="text-xs text-gray-500 mt-1">Выезд до 11:00</p>
+            <p className="text-xs text-gray-500 mt-1">🕐 Выезд до 11:00</p>
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Предоплата (₽)
-            </label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Предоплата (₽)</label>
             <input
               type="text"
               name="prepayment"
@@ -208,15 +194,12 @@ const AddBookingModal = React.memo(({ onClose, editBooking, initialDates }) => {
               value={formData.prepayment}
               onChange={handleChange}
               placeholder="0"
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-base"
             />
-            <p className="text-xs text-gray-500 mt-1">Только цифры</p>
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Доплата при въезде (₽)
-            </label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Доплата при въезде (₽)</label>
             <input
               type="text"
               name="finalPayment"
@@ -224,9 +207,8 @@ const AddBookingModal = React.memo(({ onClose, editBooking, initialDates }) => {
               value={formData.finalPayment}
               onChange={handleChange}
               placeholder="0"
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-base"
             />
-            <p className="text-xs text-gray-500 mt-1">Только цифры</p>
           </div>
 
           <div>
@@ -236,24 +218,25 @@ const AddBookingModal = React.memo(({ onClose, editBooking, initialDates }) => {
               rows="3"
               value={formData.comment}
               onChange={handleChange}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-base resize-none"
+              placeholder="Дополнительная информация..."
             />
           </div>
 
-          <div className="flex gap-2 pt-4">
+          <div className="flex gap-3 pt-2">
             <button
               type="submit"
               disabled={loading}
-              className="flex-1 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-medium py-2.5 px-4 rounded-lg transition-colors disabled:opacity-50 text-sm"
             >
-              {loading ? 'Сохранение...' : (editBooking ? 'Сохранить' : 'Добавить')}
+              {loading ? '💾 Сохранение...' : (editBooking ? '💾 Сохранить' : '➕ Добавить')}
             </button>
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 bg-gray-300 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-400 transition-colors"
+              className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium py-2.5 px-4 rounded-lg transition-colors text-sm"
             >
-              Отмена
+              ❌ Отмена
             </button>
           </div>
         </form>

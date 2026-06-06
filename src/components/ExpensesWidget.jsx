@@ -2,36 +2,51 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { collection, onSnapshot, query, addDoc, deleteDoc, doc, Timestamp } from 'firebase/firestore';
 import { db } from '../firebase/config';
 
-const ExpensesWidget = ({ currentMonth }) => {
+const ExpensesWidget = ({ year, month }) => {
   const [expenses, setExpenses] = useState([]);
   const [showAddModal, setShowAddModal] = useState(false);
   const [newExpenseName, setNewExpenseName] = useState('');
   const [newExpenseAmount, setNewExpenseAmount] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const [isOpen, setIsOpen] = useState(false); // для раскрытия виджета
+  const [isOpen, setIsOpen] = useState(false);
+  const [currentYear, setCurrentYear] = useState(year);
+  const [currentMonth, setCurrentMonth] = useState(month);
 
-  // Загрузка расходов за текущий месяц
+  // Обновляем локальные значения при изменении пропсов
   useEffect(() => {
-    const year = currentMonth.getFullYear();
-    const month = currentMonth.getMonth();
+    console.log('🔄 ExpensesWidget: пропсы изменились', { year, month });
+    setCurrentYear(year);
+    setCurrentMonth(month);
+  }, [year, month]);
+
+  // Загрузка расходов за указанный месяц
+  useEffect(() => {
+    if (currentYear === undefined || currentMonth === undefined) return;
+    
+    console.log('📊 Загрузка расходов за:', currentYear, currentMonth);
 
     const q = query(collection(db, 'expenses'));
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      const expensesData = snapshot.docs
-        .map(doc => ({
-          id: doc.id,
-          ...doc.data(),
-          date: doc.data().date?.toDate(),
-          createdAt: doc.data().createdAt?.toDate(),
-        }))
-        .filter(exp => exp.year === year && exp.month === month);
+      const allExpenses = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data(),
+        date: doc.data().date?.toDate(),
+        createdAt: doc.data().createdAt?.toDate(),
+      }));
       
-      setExpenses(expensesData);
+      const filteredExpenses = allExpenses.filter(exp => {
+        return exp.year === currentYear && exp.month === currentMonth;
+      });
+      
+      const total = filteredExpenses.reduce((s, e) => s + (e.amount || 0), 0);
+      console.log(`💰 Расходов за ${currentYear}/${currentMonth + 1}:`, filteredExpenses.length, 'сумма:', total);
+      
+      setExpenses(filteredExpenses);
     });
 
     return () => unsubscribe();
-  }, [currentMonth]);
+  }, [currentYear, currentMonth]);
 
   const totalExpenses = expenses.reduce((sum, exp) => sum + (exp.amount || 0), 0);
 
@@ -56,9 +71,9 @@ const ExpensesWidget = ({ currentMonth }) => {
       await addDoc(collection(db, 'expenses'), {
         name: newExpenseName.trim(),
         amount: amount,
-        date: Timestamp.fromDate(new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 1)),
-        month: currentMonth.getMonth(),
-        year: currentMonth.getFullYear(),
+        date: Timestamp.fromDate(new Date(currentYear, currentMonth, 1)),
+        month: currentMonth,
+        year: currentYear,
         createdAt: Timestamp.now()
       });
 
@@ -81,9 +96,10 @@ const ExpensesWidget = ({ currentMonth }) => {
     }
   };
 
+  const monthNames = ['январь', 'февраль', 'март', 'апрель', 'май', 'июнь', 'июль', 'август', 'сентябрь', 'октябрь', 'ноябрь', 'декабрь'];
+
   return (
     <div className="relative">
-      {/* Кнопка-индикатор расходов */}
       <button
         onClick={() => setIsOpen(!isOpen)}
         className="flex items-center gap-2 bg-orange-500 hover:bg-orange-600 transition-colors text-white px-4 py-2 rounded-lg shadow-md"
@@ -97,15 +113,14 @@ const ExpensesWidget = ({ currentMonth }) => {
         </svg>
       </button>
 
-      {/* Выпадающая панель с расходами */}
       {isOpen && (
         <div className="absolute top-full left-0 mt-2 w-80 bg-white rounded-lg shadow-xl border z-50">
           <div className="p-4">
             <div className="flex justify-between items-center mb-3">
-              <h3 className="font-semibold text-gray-800">Расходы за месяц</h3>
+              <h3 className="font-semibold text-gray-800">Расходы за {monthNames[currentMonth]} {currentYear}</h3>
               <button
                 onClick={() => setShowAddModal(true)}
-                className="text-blue-600 hover:text-blue-700 text-sm flex items-center gap-1"
+                className="text-orange-600 hover:text-orange-700 text-sm flex items-center gap-1"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -145,7 +160,6 @@ const ExpensesWidget = ({ currentMonth }) => {
         </div>
       )}
 
-      {/* Модалка добавления расхода */}
       {showAddModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-lg max-w-sm w-full p-5">

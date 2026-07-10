@@ -9,6 +9,7 @@ import BookingModal from './BookingModal';
 import AddBookingModal from './AddBookingModal';
 import ExpensesWidget from './ExpensesWidget';
 import TodosWidget from './TodosWidget';
+import ReviewsWidget from './ReviewsWidget';
 
 const Calendar = React.memo(() => {
   const [bookings, setBookings] = useState([]);
@@ -131,8 +132,6 @@ const Calendar = React.memo(() => {
   }, [bookings]);
 
   const handleDateClick = useCallback((info) => {
-    
-    
     const clickedDate = new Date(info.date);
     clickedDate.setHours(0, 0, 0, 0);
 
@@ -148,14 +147,11 @@ const Calendar = React.memo(() => {
       return clickedDate >= startDay && clickedDate < endDay;
     });
 
-   
-
     if (booking) {
       const endDay = new Date(booking.endDate);
       endDay.setHours(0, 0, 0, 0);
       
       if (clickedDate.getTime() === endDay.getTime()) {
-       
         const newStartDate = new Date(clickedDate);
         newStartDate.setHours(14, 0, 0, 0);
         const newEndDate = new Date(clickedDate);
@@ -165,12 +161,10 @@ const Calendar = React.memo(() => {
         setShowAddModal(true);
         setSelectedBooking(null);
       } else {
-      
         setSelectedBooking(booking);
         setShowAddModal(false);
       }
     } else {
-     
       const startDate = new Date(clickedDate);
       startDate.setHours(14, 0, 0, 0);
       const endDate = new Date(clickedDate);
@@ -183,17 +177,14 @@ const Calendar = React.memo(() => {
   }, [bookings]);
 
   const handleEventClick = useCallback((info) => {
-   
     handleDateClick({ date: info.event.start });
   }, [handleDateClick]);
 
   const handleCloseModal = useCallback(() => {
-   
     setSelectedBooking(null);
   }, []);
 
   const handleCloseAddModal = useCallback(() => {
-   
     setShowAddModal(false);
     setSelectedDates(null);
   }, []);
@@ -214,11 +205,6 @@ const Calendar = React.memo(() => {
 
   const monthNames = ['январь', 'февраль', 'март', 'апрель', 'май', 'июнь', 'июль', 'август', 'сентябрь', 'октябрь', 'ноябрь', 'декабрь'];
 
-  // Отладка состояния модалок
-  useEffect(() => {
-   
-  }, [selectedBooking, showAddModal]);
-
   if (loading) {
     return (
       <div className="flex justify-center items-center h-64">
@@ -237,6 +223,7 @@ const Calendar = React.memo(() => {
 
   return (
     <div className="p-4">
+      {/* Блок с месячным доходом */}
       <div className="mb-6 bg-gradient-to-r from-blue-500 to-blue-600 rounded-lg shadow-lg p-4 text-white">
         <div className="flex flex-col md:flex-row justify-between items-center gap-4">
           <div>
@@ -256,12 +243,17 @@ const Calendar = React.memo(() => {
         </div>
       </div>
 
-      <div className="flex justify-between items-center mb-4">
-        <ExpensesWidget year={currentYear} month={currentMonth} />
-        
+      {/* Верхняя панель */}
+      <div className="flex flex-wrap gap-2 justify-between items-center mb-4">
+        <div className="flex gap-2 flex-wrap">
+          <ExpensesWidget year={currentYear} month={currentMonth} />
+          <ReviewsWidget />
+        </div>
+      
         <TodosWidget />
       </div>
 
+      {/* Календарь */}
       <div className="bg-white rounded-lg shadow-lg p-4">
         <FullCalendar
           ref={calendarRef}
@@ -280,6 +272,7 @@ const Calendar = React.memo(() => {
         />
       </div>
 
+      {/* Нижняя панель навигации */}
       <div className="flex justify-center items-center gap-6 mt-4">
         <button
           onClick={handlePrevMonth}
@@ -304,7 +297,7 @@ const Calendar = React.memo(() => {
         </button>
       </div>
 
-      {/* Модальные окна - явно выводим даже если null для отладки */}
+      {/* Модальные окна */}
       {selectedBooking && (
         <BookingModal
           booking={selectedBooking}

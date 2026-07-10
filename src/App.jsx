@@ -1,8 +1,22 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import Calendar from './components/Calendar';
+import ReviewPage from './ReviewPage';
 import './index.css';
 
 function App() {
+  const [isReviewPage, setIsReviewPage] = useState(false);
+
+  useEffect(() => {
+    // Проверяем, открыта ли страница отзыва
+    if (window.location.pathname === '/review') {
+      setIsReviewPage(true);
+    }
+  }, []);
+
+  if (isReviewPage) {
+    return <ReviewPage />;
+  }
+
   return (
     <div className="min-h-screen bg-gray-50">
       <main className="container mx-auto py-6">

@@ -10,7 +10,6 @@ const TodosWidget = () => {
   const [loading, setLoading] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
 
-  // Загрузка всех задач (без фильтрации по месяцу)
   useEffect(() => {
     const q = query(collection(db, 'todos'));
     const unsubscribe = onSnapshot(q, (snapshot) => {
@@ -73,31 +72,29 @@ const TodosWidget = () => {
 
   return (
     <div className="relative">
-      {/* Кнопка-индикатор задач */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center gap-2 bg-purple-500 hover:bg-purple-600 transition-colors text-white px-4 py-2 rounded-lg shadow-md"
+        className="flex items-center gap-1.5 bg-purple-500 hover:bg-purple-600 transition-colors text-white px-3 py-1.5 rounded-lg shadow-md text-sm"
       >
-        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
         </svg>
-        <span>Задачи: {completedCount}/{todos.length}</span>
-        <svg className={`w-4 h-4 transform transition-transform ${isOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <span>{completedCount}/{todos.length}</span>
+        <svg className={`w-3 h-3 transform transition-transform ${isOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
         </svg>
       </button>
 
-      {/* Выпадающая панель с задачами */}
       {isOpen && (
-        <div className="absolute top-full right-0 mt-2 w-80 bg-white rounded-lg shadow-xl border z-50">
-          <div className="p-4">
-            <div className="flex justify-between items-center mb-3">
-              <h3 className="font-semibold text-gray-800">Список задач</h3>
+        <div className="absolute top-full right-0 mt-1 w-72 bg-white rounded-lg shadow-xl border z-50">
+          <div className="p-3">
+            <div className="flex justify-between items-center mb-2">
+              <h3 className="font-semibold text-gray-800 text-sm">Задачи</h3>
               <button
                 onClick={() => setShowAddModal(true)}
-                className="text-purple-600 hover:text-purple-700 text-sm flex items-center gap-1"
+                className="text-purple-600 hover:text-purple-700 text-xs flex items-center gap-1"
               >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                 </svg>
                 Добавить
@@ -105,20 +102,20 @@ const TodosWidget = () => {
             </div>
 
             {todos.length === 0 ? (
-              <p className="text-gray-500 text-sm text-center py-4">Нет задач</p>
+              <p className="text-gray-500 text-xs text-center py-2">Нет задач</p>
             ) : (
-              <div className="max-h-64 overflow-y-auto space-y-2">
+              <div className="max-h-48 overflow-y-auto space-y-1">
                 {todos.map(todo => (
-                  <div key={todo.id} className="flex items-center justify-between p-2 bg-gray-50 rounded-lg group">
+                  <div key={todo.id} className="flex items-center justify-between p-1.5 bg-gray-50 rounded group">
                     <div className="flex items-center gap-2 flex-1 cursor-pointer" onClick={() => handleToggleComplete(todo)}>
-                      <div className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${todo.completed ? 'bg-purple-500 border-purple-500' : 'border-gray-300'}`}>
+                      <div className={`w-4 h-4 rounded border-2 flex items-center justify-center transition-colors ${todo.completed ? 'bg-purple-500 border-purple-500' : 'border-gray-300'}`}>
                         {todo.completed && (
-                          <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <svg className="w-2.5 h-2.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
                           </svg>
                         )}
                       </div>
-                      <span className={`text-sm text-gray-700 ${todo.completed ? 'line-through text-gray-400' : ''}`}>
+                      <span className={`text-xs text-gray-700 ${todo.completed ? 'line-through text-gray-400' : ''}`}>
                         {todo.text}
                       </span>
                     </div>
@@ -126,7 +123,7 @@ const TodosWidget = () => {
                       onClick={() => handleDeleteTodo(todo.id)}
                       className="text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
                     >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                       </svg>
                     </button>
@@ -138,7 +135,6 @@ const TodosWidget = () => {
         </div>
       )}
 
-      {/* Модалка добавления задачи */}
       {showAddModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-lg max-w-sm w-full p-5">

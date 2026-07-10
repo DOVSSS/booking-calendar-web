@@ -13,19 +13,14 @@ const ExpensesWidget = ({ year, month }) => {
   const [currentYear, setCurrentYear] = useState(year);
   const [currentMonth, setCurrentMonth] = useState(month);
 
-  // Обновляем локальные значения при изменении пропсов
   useEffect(() => {
-    console.log('🔄 ExpensesWidget: пропсы изменились', { year, month });
     setCurrentYear(year);
     setCurrentMonth(month);
   }, [year, month]);
 
-  // Загрузка расходов за указанный месяц
   useEffect(() => {
     if (currentYear === undefined || currentMonth === undefined) return;
     
-    console.log('📊 Загрузка расходов за:', currentYear, currentMonth);
-
     const q = query(collection(db, 'expenses'));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const allExpenses = snapshot.docs.map(doc => ({
@@ -38,9 +33,6 @@ const ExpensesWidget = ({ year, month }) => {
       const filteredExpenses = allExpenses.filter(exp => {
         return exp.year === currentYear && exp.month === currentMonth;
       });
-      
-      const total = filteredExpenses.reduce((s, e) => s + (e.amount || 0), 0);
-      console.log(`💰 Расходов за ${currentYear}/${currentMonth + 1}:`, filteredExpenses.length, 'сумма:', total);
       
       setExpenses(filteredExpenses);
     });
@@ -96,73 +88,86 @@ const ExpensesWidget = ({ year, month }) => {
     }
   };
 
-  const monthNames = ['январь', 'февраль', 'март', 'апрель', 'май', 'июнь', 'июль', 'август', 'сентябрь', 'октябрь', 'ноябрь', 'декабрь'];
+  const monthNames = ['янв', 'фев', 'мар', 'апр', 'май', 'июн', 'июл', 'авг', 'сен', 'окт', 'ноя', 'дек'];
 
   return (
-    <div className="relative">
+    <div className="relative inline-block">
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center gap-2 bg-orange-500 hover:bg-orange-600 transition-colors text-white px-4 py-2 rounded-lg shadow-md"
+        className="flex items-center gap-1.5 bg-orange-500 hover:bg-orange-600 transition-colors text-white px-3 py-1.5 rounded-lg shadow-md text-sm"
       >
-        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm0 0v4" />
         </svg>
-        <span>Расходы: {formatMoney(totalExpenses)}</span>
-        <svg className={`w-4 h-4 transform transition-transform ${isOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <span>{formatMoney(totalExpenses)}</span>
+        <svg className={`w-3 h-3 transform transition-transform ${isOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
         </svg>
       </button>
 
       {isOpen && (
-        <div className="absolute top-full left-0 mt-2 w-80 bg-white rounded-lg shadow-xl border z-50">
-          <div className="p-4">
-            <div className="flex justify-between items-center mb-3">
-              <h3 className="font-semibold text-gray-800">Расходы за {monthNames[currentMonth]} {currentYear}</h3>
-              <button
-                onClick={() => setShowAddModal(true)}
-                className="text-orange-600 hover:text-orange-700 text-sm flex items-center gap-1"
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                </svg>
-                Добавить
-              </button>
-            </div>
-
-            {expenses.length === 0 ? (
-              <p className="text-gray-500 text-sm text-center py-4">Нет расходов</p>
-            ) : (
-              <div className="max-h-64 overflow-y-auto space-y-2">
-                {expenses.map(exp => (
-                  <div key={exp.id} className="flex justify-between items-center p-2 bg-gray-50 rounded-lg">
-                    <span className="text-sm text-gray-700">{exp.name}</span>
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm font-medium text-red-600">{formatMoney(exp.amount)}</span>
-                      <button
-                        onClick={() => handleDeleteExpense(exp.id)}
-                        className="text-gray-400 hover:text-red-500"
-                      >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                        </svg>
-                      </button>
-                    </div>
-                  </div>
-                ))}
+        <>
+          <div className="fixed inset-0 z-40 md:hidden" onClick={() => setIsOpen(false)} />
+          <div className="absolute top-full left-0 mt-1 w-72 max-w-[calc(100vw-2rem)] bg-white rounded-lg shadow-xl border z-50 max-h-[80vh] overflow-hidden">
+            <div className="p-3 max-h-[80vh] overflow-y-auto">
+              <div className="flex justify-between items-center mb-2 sticky top-0 bg-white py-1 z-10">
+                <h3 className="font-semibold text-gray-800 text-sm">Расходы за {monthNames[currentMonth]} {currentYear}</h3>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setShowAddModal(true)}
+                    className="text-orange-600 hover:text-orange-700 text-xs flex items-center gap-1"
+                  >
+                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                    </svg>
+                    Добавить
+                  </button>
+                  <button
+                    onClick={() => setIsOpen(false)}
+                    className="text-gray-400 hover:text-gray-600 md:hidden"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
               </div>
-            )}
 
-            <div className="mt-3 pt-3 border-t flex justify-between items-center">
-              <span className="font-medium text-gray-800">Итого расходов:</span>
-              <span className="font-bold text-red-600">{formatMoney(totalExpenses)}</span>
+              {expenses.length === 0 ? (
+                <p className="text-gray-500 text-xs text-center py-2">Нет расходов</p>
+              ) : (
+                <div className="space-y-1">
+                  {expenses.map(exp => (
+                    <div key={exp.id} className="flex justify-between items-center p-1.5 bg-gray-50 rounded text-sm">
+                      <span className="text-gray-700 text-xs break-words flex-1 mr-2">{exp.name}</span>
+                      <div className="flex items-center gap-1.5 flex-shrink-0">
+                        <span className="text-xs font-medium text-red-600">{formatMoney(exp.amount)}</span>
+                        <button
+                          onClick={() => handleDeleteExpense(exp.id)}
+                          className="text-gray-400 hover:text-red-500"
+                        >
+                          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                          </svg>
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <div className="mt-2 pt-2 border-t flex justify-between items-center text-sm">
+                <span className="font-medium text-gray-800">Итого:</span>
+                <span className="font-bold text-red-600">{formatMoney(totalExpenses)}</span>
+              </div>
             </div>
           </div>
-        </div>
+        </>
       )}
 
       {showAddModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg max-w-sm w-full p-5">
+          <div className="bg-white rounded-lg max-w-sm w-full p-5 max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-lg font-semibold text-gray-800">Добавить расход</h3>
               <button onClick={() => setShowAddModal(false)} className="text-gray-400 hover:text-gray-600">

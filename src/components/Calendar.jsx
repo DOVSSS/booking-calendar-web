@@ -1,3 +1,4 @@
+// Calendar.jsx
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import FullCalendar from '@fullcalendar/react';
 import dayGridPlugin from '@fullcalendar/daygrid';
@@ -243,14 +244,11 @@ const Calendar = React.memo(() => {
         </div>
       </div>
 
-      {/* Верхняя панель */}
-      <div className="flex flex-wrap gap-2 justify-between items-center mb-4">
-        <div className="flex gap-2 flex-wrap">
-          <ExpensesWidget year={currentYear} month={currentMonth} />
-          <ReviewsWidget />
-        </div>
-      
-        <TodosWidget />
+      {/* Верхняя панель — три кнопки в один ряд без отступов */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 mb-4">
+        <ExpensesWidget year={currentYear} month={currentMonth} className="w-full" />
+        <ReviewsWidget className="w-full" />
+        <TodosWidget className="w-full" />
       </div>
 
       {/* Календарь */}

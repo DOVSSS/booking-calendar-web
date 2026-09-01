@@ -1,4 +1,3 @@
-// ExpensesWidget.jsx
 import React, { useState, useEffect } from 'react';
 import { collection, onSnapshot, query, addDoc, deleteDoc, doc, Timestamp } from 'firebase/firestore';
 import { db } from '../firebase/config';
@@ -21,6 +20,7 @@ const ExpensesWidget = ({ year, month, className }) => {
 
   useEffect(() => {
     if (currentYear === undefined || currentMonth === undefined) return;
+    
     const q = query(collection(db, 'expenses'));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const allExpenses = snapshot.docs.map(doc => ({
@@ -29,9 +29,20 @@ const ExpensesWidget = ({ year, month, className }) => {
         date: doc.data().date?.toDate(),
         createdAt: doc.data().createdAt?.toDate(),
       }));
-      const filteredExpenses = allExpenses.filter(exp => exp.year === currentYear && exp.month === currentMonth);
-      setExpenses(filteredExpenses);
+      
+      // Фильтруем по году и месяцу
+      const filteredExpenses = allExpenses.filter(exp => 
+        exp.year === currentYear && exp.month === currentMonth
+      );
+      
+      // Сортируем по дате создания: новые сверху (по убыванию)
+      const sortedExpenses = filteredExpenses.sort((a, b) => 
+        (b.createdAt?.getTime() || 0) - (a.createdAt?.getTime() || 0)
+      );
+      
+      setExpenses(sortedExpenses);
     });
+
     return () => unsubscribe();
   }, [currentYear, currentMonth]);
 
@@ -39,6 +50,11 @@ const ExpensesWidget = ({ year, month, className }) => {
 
   const formatMoney = (amount) => {
     return new Intl.NumberFormat('ru-RU', { style: 'currency', currency: 'RUB', minimumFractionDigits: 0 }).format(amount);
+  };
+
+  const formatDate = (date) => {
+    if (!date) return '';
+    return new Date(date).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' });
   };
 
   const handleAddExpense = async (e) => {
@@ -49,14 +65,17 @@ const ExpensesWidget = ({ year, month, className }) => {
       const amount = parseInt(newExpenseAmount.replace(/[^\d]/g, ''), 10);
       if (!newExpenseName.trim()) throw new Error('Введите название расхода');
       if (isNaN(amount) || amount <= 0) throw new Error('Введите корректную сумму');
+      
+      const now = Timestamp.now();
       await addDoc(collection(db, 'expenses'), {
         name: newExpenseName.trim(),
         amount,
-        date: Timestamp.fromDate(new Date(currentYear, currentMonth, 1)),
+        date: now,             // текущая дата
         month: currentMonth,
         year: currentYear,
-        createdAt: Timestamp.now()
+        createdAt: now         // тоже текущая дата
       });
+      
       setNewExpenseName('');
       setNewExpenseAmount('');
       setShowAddModal(false);
@@ -94,6 +113,7 @@ const ExpensesWidget = ({ year, month, className }) => {
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
           </svg>
         </button>
+
         {isOpen && (
           <>
             {isMobile ? (
@@ -119,7 +139,10 @@ const ExpensesWidget = ({ year, month, className }) => {
                     <div className="space-y-3">
                       {expenses.map(exp => (
                         <div key={exp.id} className="flex justify-between items-center p-4 bg-gray-50 rounded-xl">
-                          <span className="text-gray-700">{exp.name}</span>
+                          <div className="flex-1">
+                            <span className="text-gray-700">{exp.name}</span>
+                            <span className="text-xs text-gray-400 ml-2">{formatDate(exp.createdAt)}</span>
+                          </div>
                           <div className="flex items-center gap-3">
                             <span className="font-medium text-red-600">{formatMoney(exp.amount)}</span>
                             <button onClick={() => handleDeleteExpense(exp.id)} className="text-gray-400 hover:text-red-500">
@@ -154,7 +177,10 @@ const ExpensesWidget = ({ year, month, className }) => {
                     <div className="space-y-1">
                       {expenses.map(exp => (
                         <div key={exp.id} className="flex justify-between items-center p-1.5 bg-gray-50 rounded text-sm">
-                          <span className="text-gray-700 text-xs break-words flex-1 mr-2">{exp.name}</span>
+                          <div className="flex flex-col flex-1 mr-2">
+                            <span className="text-gray-700 text-xs break-words">{exp.name}</span>
+                            <span className="text-[10px] text-gray-400">{formatDate(exp.createdAt)}</span>
+                          </div>
                           <div className="flex items-center gap-1.5 flex-shrink-0">
                             <span className="text-xs font-medium text-red-600">{formatMoney(exp.amount)}</span>
                             <button onClick={() => handleDeleteExpense(exp.id)} className="text-gray-400 hover:text-red-500">

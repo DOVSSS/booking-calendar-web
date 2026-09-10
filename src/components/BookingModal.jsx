@@ -3,7 +3,7 @@ import { doc, deleteDoc } from 'firebase/firestore';
 import { db } from '../firebase/config';
 import AddBookingModal from './AddBookingModal';
 
-const BookingModal = React.memo(({ booking, onClose }) => {
+const BookingModal = React.memo(({ booking, onClose, houseName, houseId }) => {
   const [showEditModal, setShowEditModal] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
@@ -56,6 +56,13 @@ const BookingModal = React.memo(({ booking, onClose }) => {
           </div>
 
           <div className="p-5 space-y-4">
+            {houseName && (
+              <div className="bg-blue-50 rounded-lg p-3">
+                <label className="text-xs text-blue-600 uppercase tracking-wider">Домик</label>
+                <p className="font-medium text-gray-800 text-base mt-1">{houseName}</p>
+              </div>
+            )}
+
             {/* Имя */}
             <div className="bg-gray-50 rounded-lg p-3">
               <label className="text-xs text-gray-500 uppercase tracking-wider">Имя</label>
@@ -137,6 +144,7 @@ const BookingModal = React.memo(({ booking, onClose }) => {
             onClose();
           }}
           editBooking={booking}
+          houseId={houseId || booking.houseId}
         />
       )}
     </>

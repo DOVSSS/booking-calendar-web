@@ -23,7 +23,7 @@ function App() {
         <Calendar />
       </main>
       <footer className="text-center py-4 text-gray-500 text-sm">
-        © {new Date().getFullYear()} Календарь бронирования домика
+        © {new Date().getFullYear()} Календарь бронирования домиков
       </footer>
     </div>
   );

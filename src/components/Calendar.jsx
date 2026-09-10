@@ -49,7 +49,8 @@ const Calendar = React.memo(() => {
           .sort((a, b) => {
             const aTime = a.createdAt?.getTime?.() ?? 0;
             const bTime = b.createdAt?.getTime?.() ?? 0;
-            return aTime - bTime;
+            if (aTime !== bTime) return aTime - bTime;
+            return String(a.name || '').localeCompare(String(b.name || ''), 'ru');
           });
         setHouses(housesData);
         setHousesLoading(false);
@@ -89,6 +90,7 @@ const Calendar = React.memo(() => {
     }
 
     setLoading(true);
+    setBookings([]);
     const q = query(collection(db, 'bookings'), where('houseId', '==', selectedHouseId));
 
     const unsubscribe = onSnapshot(
@@ -320,6 +322,14 @@ const Calendar = React.memo(() => {
     );
   }
 
+  if (error) {
+    return (
+      <div className="flex justify-center items-center h-64">
+        <div className="text-center text-red-600 max-w-md px-4">{error}</div>
+      </div>
+    );
+  }
+
   if (houses.length === 0) {
     return (
       <div className="p-4">
@@ -339,14 +349,6 @@ const Calendar = React.memo(() => {
             onCreated={handleHouseCreated}
           />
         )}
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="flex justify-center items-center h-64">
-        <div className="text-center text-red-600">{error}</div>
       </div>
     );
   }

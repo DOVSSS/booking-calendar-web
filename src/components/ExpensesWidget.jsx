@@ -24,6 +24,7 @@ const ExpensesWidget = ({ year, month, houseId, className }) => {
       return;
     }
 
+    setExpenses([]);
     const q = query(collection(db, 'expenses'), where('houseId', '==', houseId));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const allExpenses = snapshot.docs.map((docSnap) => ({

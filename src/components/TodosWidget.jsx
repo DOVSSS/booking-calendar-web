@@ -17,6 +17,7 @@ const TodosWidget = ({ houseId, className }) => {
       return;
     }
 
+    setTodos([]);
     const q = query(collection(db, 'todos'), where('houseId', '==', houseId));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const todosData = snapshot.docs.map((docSnap) => ({

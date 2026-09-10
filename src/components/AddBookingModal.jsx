@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { collection, addDoc, doc, updateDoc, query, getDocs, Timestamp } from 'firebase/firestore';
+import { collection, addDoc, doc, updateDoc, query, where, getDocs, Timestamp } from 'firebase/firestore';
 import { db } from '../firebase/config';
 
-const AddBookingModal = React.memo(({ onClose, editBooking, initialDates }) => {
+const AddBookingModal = React.memo(({ onClose, editBooking, initialDates, houseId }) => {
   const formatDateForInput = (date) => {
     if (!date) return '';
     const d = new Date(date);
@@ -24,13 +24,16 @@ const AddBookingModal = React.memo(({ onClose, editBooking, initialDates }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
+  const effectiveHouseId = houseId || editBooking?.houseId;
+
   const checkOverlap = useCallback(async (start, end, excludeId = null) => {
     try {
-      const q = query(collection(db, 'bookings'));
+      if (!effectiveHouseId) return false;
+      const q = query(collection(db, 'bookings'), where('houseId', '==', effectiveHouseId));
       const snapshot = await getDocs(q);
-      return snapshot.docs.some(doc => {
-        if (excludeId && doc.id === excludeId) return false;
-        const b = doc.data();
+      return snapshot.docs.some((docSnap) => {
+        if (excludeId && docSnap.id === excludeId) return false;
+        const b = docSnap.data();
         const bStart = b.startDate.toDate();
         const bEnd = b.endDate.toDate();
         return start < bEnd && end > bStart;
@@ -39,7 +42,7 @@ const AddBookingModal = React.memo(({ onClose, editBooking, initialDates }) => {
       console.error('Overlap check error:', err);
       return false;
     }
-  }, []);
+  }, [effectiveHouseId]);
 
   const safeParseNumber = (value) => {
     if (value === undefined || value === null || value === '') return 0;
@@ -75,6 +78,10 @@ const AddBookingModal = React.memo(({ onClose, editBooking, initialDates }) => {
       const prepaymentAmount = safeParseNumber(formData.prepayment);
       const finalPaymentAmount = safeParseNumber(formData.finalPayment);
 
+      if (!effectiveHouseId) {
+        throw new Error('Не выбран домик');
+      }
+
       const bookingData = {
         name: formData.name.trim(),
         phone: formData.phone.trim(),
@@ -83,6 +90,7 @@ const AddBookingModal = React.memo(({ onClose, editBooking, initialDates }) => {
         prepayment: prepaymentAmount,
         finalPayment: finalPaymentAmount,
         comment: formData.comment.trim() || '',
+        houseId: effectiveHouseId,
         createdAt: editBooking?.createdAt
           ? (typeof editBooking.createdAt === 'object' ? editBooking.createdAt : Timestamp.fromDate(new Date(editBooking.createdAt)))
           : Timestamp.now()

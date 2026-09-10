@@ -1,9 +1,9 @@
 // TodosWidget.jsx
 import React, { useState, useEffect } from 'react';
-import { collection, onSnapshot, query, addDoc, updateDoc, deleteDoc, doc, Timestamp } from 'firebase/firestore';
+import { collection, onSnapshot, query, where, addDoc, updateDoc, deleteDoc, doc, Timestamp } from 'firebase/firestore';
 import { db } from '../firebase/config';
 
-const TodosWidget = ({ className }) => {
+const TodosWidget = ({ houseId, className }) => {
   const [todos, setTodos] = useState([]);
   const [showAddModal, setShowAddModal] = useState(false);
   const [newTodoText, setNewTodoText] = useState('');
@@ -12,28 +12,35 @@ const TodosWidget = ({ className }) => {
   const [isOpen, setIsOpen] = useState(false);
 
   useEffect(() => {
-    const q = query(collection(db, 'todos'));
+    if (!houseId) {
+      setTodos([]);
+      return;
+    }
+
+    const q = query(collection(db, 'todos'), where('houseId', '==', houseId));
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      const todosData = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data(),
-        createdAt: doc.data().createdAt?.toDate(),
+      const todosData = snapshot.docs.map((docSnap) => ({
+        id: docSnap.id,
+        ...docSnap.data(),
+        createdAt: docSnap.data().createdAt?.toDate(),
       }));
       setTodos(todosData);
     });
     return () => unsubscribe();
-  }, []);
+  }, [houseId]);
 
   const handleAddTodo = async (e) => {
     e.preventDefault();
     setError('');
     setLoading(true);
     try {
+      if (!houseId) throw new Error('Не выбран домик');
       if (!newTodoText.trim()) throw new Error('Введите текст задачи');
       await addDoc(collection(db, 'todos'), {
         text: newTodoText.trim(),
         completed: false,
-        createdAt: Timestamp.now()
+        createdAt: Timestamp.now(),
+        houseId,
       });
       setNewTodoText('');
       setShowAddModal(false);

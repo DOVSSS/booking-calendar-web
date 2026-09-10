@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { collection, onSnapshot, query, addDoc, deleteDoc, doc, Timestamp } from 'firebase/firestore';
+import { collection, onSnapshot, query, where, addDoc, deleteDoc, doc, Timestamp } from 'firebase/firestore';
 import { db } from '../firebase/config';
 
-const ExpensesWidget = ({ year, month, className }) => {
+const ExpensesWidget = ({ year, month, houseId, className }) => {
   const [expenses, setExpenses] = useState([]);
   const [showAddModal, setShowAddModal] = useState(false);
   const [newExpenseName, setNewExpenseName] = useState('');
@@ -19,32 +19,35 @@ const ExpensesWidget = ({ year, month, className }) => {
   }, [year, month]);
 
   useEffect(() => {
-    if (currentYear === undefined || currentMonth === undefined) return;
-    
-    const q = query(collection(db, 'expenses'));
+    if (currentYear === undefined || currentMonth === undefined || !houseId) {
+      setExpenses([]);
+      return;
+    }
+
+    const q = query(collection(db, 'expenses'), where('houseId', '==', houseId));
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      const allExpenses = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data(),
-        date: doc.data().date?.toDate(),
-        createdAt: doc.data().createdAt?.toDate(),
+      const allExpenses = snapshot.docs.map((docSnap) => ({
+        id: docSnap.id,
+        ...docSnap.data(),
+        date: docSnap.data().date?.toDate(),
+        createdAt: docSnap.data().createdAt?.toDate(),
       }));
-      
+
       // Фильтруем по году и месяцу
-      const filteredExpenses = allExpenses.filter(exp => 
-        exp.year === currentYear && exp.month === currentMonth
+      const filteredExpenses = allExpenses.filter(
+        (exp) => exp.year === currentYear && exp.month === currentMonth
       );
-      
+
       // Сортируем по дате создания: новые сверху (по убыванию)
-      const sortedExpenses = filteredExpenses.sort((a, b) => 
-        (b.createdAt?.getTime() || 0) - (a.createdAt?.getTime() || 0)
+      const sortedExpenses = filteredExpenses.sort(
+        (a, b) => (b.createdAt?.getTime() || 0) - (a.createdAt?.getTime() || 0)
       );
-      
+
       setExpenses(sortedExpenses);
     });
 
     return () => unsubscribe();
-  }, [currentYear, currentMonth]);
+  }, [currentYear, currentMonth, houseId]);
 
   const totalExpenses = expenses.reduce((sum, exp) => sum + (exp.amount || 0), 0);
 
@@ -66,6 +69,7 @@ const ExpensesWidget = ({ year, month, className }) => {
       if (!newExpenseName.trim()) throw new Error('Введите название расхода');
       if (isNaN(amount) || amount <= 0) throw new Error('Введите корректную сумму');
       
+      if (!houseId) throw new Error('Не выбран домик');
       const now = Timestamp.now();
       await addDoc(collection(db, 'expenses'), {
         name: newExpenseName.trim(),
@@ -73,7 +77,8 @@ const ExpensesWidget = ({ year, month, className }) => {
         date: now,             // текущая дата
         month: currentMonth,
         year: currentYear,
-        createdAt: now         // тоже текущая дата
+        createdAt: now,        // тоже текущая дата
+        houseId,
       });
       
       setNewExpenseName('');

@@ -40,31 +40,22 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff,woff2}'],
-        runtimeCaching: [
-          {
-            urlPattern: /^https:\/\/firestore\.googleapis\.com\/.*/i,
-            handler: 'NetworkFirst',
-            options: {
-              cacheName: 'firestore-cache',
-              expiration: {
-                maxEntries: 50,
-                maxAgeSeconds: 60 * 60 * 24,
-              },
-            },
-          },
-          {
-            urlPattern: /^https:\/\/.*\.googleapis\.com\/.*/i,
-            handler: 'NetworkFirst',
-            options: {
-              cacheName: 'google-apis-cache',
-              expiration: {
-                maxEntries: 50,
-                maxAgeSeconds: 60 * 60 * 24,
-              },
-            },
-          },
-        ],
       },
     }),
   ],
+  server: {
+    host: '127.0.0.1',
+  },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (!id.includes('node_modules')) return;
+          if (id.includes('@firebase') || id.includes('/firebase/')) return 'firebase';
+          if (id.includes('@fullcalendar') || id.includes('preact')) return 'fullcalendar';
+          if (id.includes('react') || id.includes('scheduler')) return 'react';
+        },
+      },
+    },
+  },
 })

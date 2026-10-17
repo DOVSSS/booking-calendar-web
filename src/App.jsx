@@ -1,20 +1,17 @@
-import React, { useState, useEffect } from 'react';
+import React, { lazy, Suspense } from 'react';
 import Calendar from './components/Calendar';
-import ReviewPage from './ReviewPage';
 import './index.css';
 
+const ReviewPage = lazy(() => import('./ReviewPage'));
+
 function App() {
-  const [isReviewPage, setIsReviewPage] = useState(false);
-
-  useEffect(() => {
-    // Проверяем, открыта ли страница отзыва
-    if (window.location.pathname === '/review') {
-      setIsReviewPage(true);
-    }
-  }, []);
-
-  if (isReviewPage) {
-    return <ReviewPage />;
+  // Проверяем, открыта ли страница отзыва
+  if (window.location.pathname === '/review') {
+    return (
+      <Suspense fallback={null}>
+        <ReviewPage />
+      </Suspense>
+    );
   }
 
   return (

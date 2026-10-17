@@ -1,5 +1,7 @@
-import { signInWithEmailAndPassword, signOut } from 'firebase/auth';
-import { auth } from './config';
+import { getAuth, signInWithEmailAndPassword, signOut } from 'firebase/auth';
+import { app } from './config';
+
+export const auth = getAuth(app);
 
 // Функция входа
 export const loginAdmin = async (email, password) => {

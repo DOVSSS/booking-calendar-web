@@ -1,22 +1,33 @@
 // Calendar.jsx
-import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef, lazy, Suspense } from 'react';
 import FullCalendar from '@fullcalendar/react';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import interactionPlugin from '@fullcalendar/interaction';
 import ruLocale from '@fullcalendar/core/locales/ru';
 import { collection, onSnapshot, query, where } from 'firebase/firestore';
 import { db } from '../firebase/config';
-import BookingModal from './BookingModal';
-import AddBookingModal from './AddBookingModal';
 import ExpensesWidget from './ExpensesWidget';
 import TodosWidget from './TodosWidget';
 import ReviewsWidget from './ReviewsWidget';
 import HouseSelector from './HouseSelector';
-import AddHouseModal from './AddHouseModal';
+
+const BookingModal = lazy(() => import('./BookingModal'));
+const AddBookingModal = lazy(() => import('./AddBookingModal'));
+const AddHouseModal = lazy(() => import('./AddHouseModal'));
+
+const SELECTED_HOUSE_KEY = 'selectedHouseId';
+
+const readSavedHouseId = () => {
+  try {
+    return localStorage.getItem(SELECTED_HOUSE_KEY);
+  } catch {
+    return null;
+  }
+};
 
 const Calendar = React.memo(() => {
   const [houses, setHouses] = useState([]);
-  const [selectedHouseId, setSelectedHouseId] = useState(null);
+  const [selectedHouseId, setSelectedHouseId] = useState(readSavedHouseId);
   const [housesLoading, setHousesLoading] = useState(true);
   const [showAddHouseModal, setShowAddHouseModal] = useState(false);
   const [bookings, setBookings] = useState([]);
@@ -29,10 +40,16 @@ const Calendar = React.memo(() => {
   const [currentMonth, setCurrentMonth] = useState(new Date().getMonth());
   const [monthlyIncome, setMonthlyIncome] = useState({ total: 0, prepayment: 0, finalPayment: 0 });
   const calendarRef = useRef(null);
-  const selectedHouseIdRef = useRef(null);
+  const selectedHouseIdRef = useRef(selectedHouseId);
 
   useEffect(() => {
     selectedHouseIdRef.current = selectedHouseId;
+    try {
+      if (selectedHouseId) localStorage.setItem(SELECTED_HOUSE_KEY, selectedHouseId);
+      else localStorage.removeItem(SELECTED_HOUSE_KEY);
+    } catch {
+      // localStorage недоступен (приватный режим и т.п.)
+    }
   }, [selectedHouseId]);
 
   // Load houses
@@ -344,10 +361,12 @@ const Calendar = React.memo(() => {
           </button>
         </div>
         {showAddHouseModal && (
-          <AddHouseModal
-            onClose={() => setShowAddHouseModal(false)}
-            onCreated={handleHouseCreated}
-          />
+          <Suspense fallback={null}>
+            <AddHouseModal
+              onClose={() => setShowAddHouseModal(false)}
+              onCreated={handleHouseCreated}
+            />
+          </Suspense>
         )}
       </div>
     );
@@ -448,29 +467,31 @@ const Calendar = React.memo(() => {
       </div>
 
       {/* Модальные окна */}
-      {selectedBooking && (
-        <BookingModal
-          booking={selectedBooking}
-          onClose={handleCloseModal}
-          houseName={selectedHouse?.name}
-          houseId={selectedHouseId}
-        />
-      )}
+      <Suspense fallback={null}>
+        {selectedBooking && (
+          <BookingModal
+            booking={selectedBooking}
+            onClose={handleCloseModal}
+            houseName={selectedHouse?.name}
+            houseId={selectedHouseId}
+          />
+        )}
 
-      {showAddModal && selectedHouseId && (
-        <AddBookingModal
-          onClose={handleCloseAddModal}
-          initialDates={selectedDates}
-          houseId={selectedHouseId}
-        />
-      )}
+        {showAddModal && selectedHouseId && (
+          <AddBookingModal
+            onClose={handleCloseAddModal}
+            initialDates={selectedDates}
+            houseId={selectedHouseId}
+          />
+        )}
 
-      {showAddHouseModal && (
-        <AddHouseModal
-          onClose={() => setShowAddHouseModal(false)}
-          onCreated={handleHouseCreated}
-        />
-      )}
+        {showAddHouseModal && (
+          <AddHouseModal
+            onClose={() => setShowAddHouseModal(false)}
+            onCreated={handleHouseCreated}
+          />
+        )}
+      </Suspense>
     </div>
   );
 });

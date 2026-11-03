@@ -3,55 +3,30 @@ import { app } from './config';
 
 export const auth = getAuth(app);
 
-// Функция входа
-export const loginAdmin = async (email, password) => {
+const ADMIN_EMAILS = (import.meta.env.VITE_ADMIN_EMAILS || '')
+  .split(',')
+  .map((email) => email.trim().toLowerCase())
+  .filter(Boolean);
+
+export const isAdminUser = (user) =>
+  Boolean(user?.email) && ADMIN_EMAILS.includes(user.email.toLowerCase());
+
+const LOGIN_ERRORS = {
+  'auth/invalid-credential': 'Неверный email или пароль',
+  'auth/invalid-email': 'Некорректный email',
+  'auth/user-disabled': 'Пользователь заблокирован',
+  'auth/too-many-requests': 'Слишком много попыток. Попробуйте позже',
+  'auth/network-request-failed': 'Нет соединения с интернетом',
+};
+
+export const login = async (email, password) => {
   try {
-    const userCredential = await signInWithEmailAndPassword(auth, email, password);
-    
-    // Проверяем claims сразу после входа
-    const tokenResult = await userCredential.user.getIdTokenResult();
-    console.log('User claims after login:', tokenResult.claims);
-    
-    return { user: userCredential.user, error: null };
+    await signInWithEmailAndPassword(auth, email.trim(), password);
+    return { error: null };
   } catch (error) {
     console.error('Login error:', error);
-    return { user: null, error: error.message };
+    return { error: LOGIN_ERRORS[error.code] || 'Не удалось войти' };
   }
 };
 
-// Функция выхода
-export const logoutAdmin = async () => {
-  try {
-    await signOut(auth);
-    return { success: true, error: null };
-  } catch (error) {
-    console.error('Logout error:', error);
-    return { success: false, error: error.message };
-  }
-};
-
-// Функция проверки прав администратора
-export const checkIsAdmin = async (user) => {
-  if (!user) return false;
-  try {
-    const tokenResult = await user.getIdTokenResult(true); // true = force refresh
-    console.log('Checking admin status:', tokenResult.claims);
-    return tokenResult.claims.admin === true;
-  } catch (error) {
-    console.error('Error checking admin status:', error);
-    return false;
-  }
-};
-
-// Функция для принудительного обновления токена
-export const refreshToken = async (user) => {
-  if (!user) return false;
-  try {
-    await user.getIdToken(true); // true = force refresh
-    const tokenResult = await user.getIdTokenResult();
-    return tokenResult.claims.admin === true;
-  } catch (error) {
-    console.error('Error refreshing token:', error);
-    return false;
-  }
-};
+export const logout = () => signOut(auth);

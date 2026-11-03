@@ -25,7 +25,7 @@ const readSavedHouseId = () => {
   }
 };
 
-const Calendar = React.memo(() => {
+const Calendar = React.memo(({ isAdmin = false }) => {
   const [houses, setHouses] = useState([]);
   const [selectedHouseId, setSelectedHouseId] = useState(readSavedHouseId);
   const [housesLoading, setHousesLoading] = useState(true);
@@ -381,28 +381,30 @@ const Calendar = React.memo(() => {
         onAddClick={() => setShowAddHouseModal(true)}
       />
 
-      {/* Блок с месячным доходом */}
-      <div className="mb-6 bg-gradient-to-r from-blue-500 to-blue-600 rounded-lg shadow-lg p-4 text-white">
-        <div className="flex flex-col md:flex-row justify-between items-center gap-4">
-          <div>
-            <h2 className="text-sm font-medium opacity-90">
-              Доход за {monthNames[currentMonth]} {currentYear}
-              {selectedHouse ? ` · ${selectedHouse.name}` : ''}
-            </h2>
-            <p className="text-3xl font-bold">{formatMoney(monthlyIncome.total)}</p>
-          </div>
-          <div className="flex gap-6 text-sm">
+      {/* Блок с месячным доходом — только для админа */}
+      {isAdmin && (
+        <div className="mb-6 bg-gradient-to-r from-blue-500 to-blue-600 rounded-lg shadow-lg p-4 text-white">
+          <div className="flex flex-col md:flex-row justify-between items-center gap-4">
             <div>
-              <div className="opacity-80">Предоплаты</div>
-              <div className="font-semibold text-lg">{formatMoney(monthlyIncome.prepayment)}</div>
+              <h2 className="text-sm font-medium opacity-90">
+                Доход за {monthNames[currentMonth]} {currentYear}
+                {selectedHouse ? ` · ${selectedHouse.name}` : ''}
+              </h2>
+              <p className="text-3xl font-bold">{formatMoney(monthlyIncome.total)}</p>
             </div>
-            <div>
-              <div className="opacity-80">При въезде</div>
-              <div className="font-semibold text-lg">{formatMoney(monthlyIncome.finalPayment)}</div>
+            <div className="flex gap-6 text-sm">
+              <div>
+                <div className="opacity-80">Предоплаты</div>
+                <div className="font-semibold text-lg">{formatMoney(monthlyIncome.prepayment)}</div>
+              </div>
+              <div>
+                <div className="opacity-80">При въезде</div>
+                <div className="font-semibold text-lg">{formatMoney(monthlyIncome.finalPayment)}</div>
+              </div>
             </div>
           </div>
         </div>
-      </div>
+      )}
 
       {/* Верхняя панель — три кнопки в один ряд без отступов */}
       <div className="grid grid-cols-1 sm:grid-cols-3 mb-4">

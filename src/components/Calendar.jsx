@@ -406,8 +406,8 @@ const Calendar = React.memo(({ isAdmin = false }) => {
         </div>
       )}
 
-      {/* Верхняя панель — три кнопки в один ряд без отступов */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 mb-4">
+      {/* Верхняя панель — три кнопки в один ряд */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mb-4">
         <ExpensesWidget
           year={currentYear}
           month={currentMonth}
@@ -419,10 +419,10 @@ const Calendar = React.memo(({ isAdmin = false }) => {
       </div>
 
       {/* Календарь */}
-      <div className="bg-white rounded-lg shadow-lg p-4">
+      <div className="bg-brand-charcoal rounded-lg shadow-lg p-4">
         {loading ? (
           <div className="flex justify-center items-center h-64">
-            <div className="text-gray-600">Загрузка календаря...</div>
+            <div className="text-brand-silver">Загрузка календаря...</div>
           </div>
         ) : (
           <FullCalendar
@@ -447,19 +447,19 @@ const Calendar = React.memo(({ isAdmin = false }) => {
       <div className="flex justify-center items-center gap-6 mt-4">
         <button
           onClick={handlePrevMonth}
-          className="bg-gray-200 hover:bg-gray-300 text-gray-700 w-10 h-10 rounded-full transition-colors flex items-center justify-center"
+          className="bg-brand-charcoal hover:bg-brand-slate text-brand-silver w-10 h-10 rounded-full transition-colors flex items-center justify-center"
           aria-label="Предыдущий месяц"
         >
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
           </svg>
         </button>
-        <span className="text-lg font-semibold text-gray-800 min-w-[140px] text-center">
+        <span className="text-lg font-semibold text-brand-silver min-w-[140px] text-center">
           {monthNames[currentMonth]} {currentYear}
         </span>
         <button
           onClick={handleNextMonth}
-          className="bg-gray-200 hover:bg-gray-300 text-gray-700 w-10 h-10 rounded-full transition-colors flex items-center justify-center"
+          className="bg-brand-charcoal hover:bg-brand-slate text-brand-silver w-10 h-10 rounded-full transition-colors flex items-center justify-center"
           aria-label="Следующий месяц"
         >
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

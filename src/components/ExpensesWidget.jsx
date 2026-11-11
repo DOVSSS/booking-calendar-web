@@ -109,7 +109,7 @@ const ExpensesWidget = ({ year, month, houseId, className }) => {
       <div className={`relative ${className || ''}`}>
         <button
           onClick={() => setIsOpen(!isOpen)}
-          className="w-full flex items-center justify-center gap-1.5 bg-orange-500 hover:bg-orange-600 transition-colors text-white px-3 py-1.5 rounded-lg shadow-md text-sm"
+          className="w-full flex items-center justify-center gap-1.5 bg-brand-charcoal hover:bg-brand-slate transition-colors text-brand-silver px-3 py-1.5 rounded-lg shadow-md text-sm"
         >
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm0 0v4" />

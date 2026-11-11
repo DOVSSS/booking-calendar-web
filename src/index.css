@@ -2,13 +2,37 @@
 @tailwind components;
 @tailwind utilities;
 
+.fc {
+  --fc-border-color: #4a4a4a;
+  --fc-page-bg-color: #2c2c2c;
+  --fc-neutral-bg-color: #333333;
+  --fc-today-bg-color: #3d3d3d;
+}
+
+.fc .fc-col-header-cell {
+  background-color: #2c2c2c;
+}
+
+.fc .fc-col-header-cell-cushion,
+.fc .fc-daygrid-day-number {
+  color: #c8c8c8;
+}
+
+.fc .fc-daygrid-day {
+  background-color: #323232;
+}
+
+.fc .fc-day-other {
+  background-color: #252525;
+}
+
 .fc .past-date {
-  background-color: #f3f4f6 !important;
-  opacity: 0.5;
+  background-color: #242424 !important;
+  opacity: 0.65;
 }
 
 .fc-day-today {
-  background-color: #ececec !important;
+  background-color: #3d3d3d !important;
 }
 
 .fc-event {

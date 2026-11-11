@@ -235,7 +235,7 @@ const AddBookingModal = React.memo(({ onClose, editBooking, initialDates, houseI
             <button
               type="submit"
               disabled={loading}
-              className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-medium py-2.5 px-4 rounded-lg transition-colors disabled:opacity-50 text-sm"
+              className="flex-1 bg-brand-charcoal hover:bg-brand-slate text-white font-medium py-2.5 px-4 rounded-lg transition-colors disabled:opacity-50 text-sm"
             >
               {loading ? '💾 Сохранение...' : (editBooking ? '💾 Сохранить' : '➕ Добавить')}
             </button>

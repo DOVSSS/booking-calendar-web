@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { login } from '../firebase/auth';
+import BrandLogo from './BrandLogo';
 
 const LoginPage = () => {
   const [email, setEmail] = useState('');
@@ -19,12 +20,15 @@ const LoginPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
+    <div className="min-h-screen bg-brand-dark flex items-center justify-center px-4">
       <form
         onSubmit={handleSubmit}
-        className="w-full max-w-sm bg-white rounded-lg shadow-lg p-6 flex flex-col gap-4"
+        className="w-full max-w-sm bg-brand-charcoal rounded-2xl shadow-2xl p-6 flex flex-col gap-4 border border-white/10"
       >
-        <h1 className="text-2xl font-bold text-gray-800 text-center">Вход</h1>
+        <div className="flex justify-center mb-2">
+          <BrandLogo size="lg" showText={false} />
+        </div>
+        <h1 className="text-xl font-semibold text-brand-silver text-center">Вход</h1>
 
         <input
           type="email"
@@ -33,7 +37,7 @@ const LoginPage = () => {
           placeholder="Email"
           autoComplete="username"
           required
-          className="border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="bg-brand-slate border border-white/10 text-white placeholder:text-brand-muted rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand-silver"
         />
         <input
           type="password"
@@ -42,15 +46,15 @@ const LoginPage = () => {
           placeholder="Пароль"
           autoComplete="current-password"
           required
-          className="border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="bg-brand-slate border border-white/10 text-white placeholder:text-brand-muted rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand-silver"
         />
 
-        {error && <p className="text-red-600 text-sm text-center">{error}</p>}
+        {error && <p className="text-red-400 text-sm text-center">{error}</p>}
 
         <button
           type="submit"
           disabled={loading}
-          className="bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white py-2 rounded-lg transition-colors"
+          className="bg-brand-silver hover:bg-white disabled:opacity-60 text-brand-dark font-medium py-2 rounded-lg transition-colors"
         >
           {loading ? 'Вход...' : 'Войти'}
         </button>

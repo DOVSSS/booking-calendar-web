@@ -334,7 +334,7 @@ const Calendar = React.memo(({ isAdmin = false }) => {
   if (housesLoading) {
     return (
       <div className="flex justify-center items-center h-64">
-        <div className="text-gray-600">Загрузка домиков...</div>
+        <div className="text-brand-silver">Загрузка домиков...</div>
       </div>
     );
   }
@@ -351,11 +351,11 @@ const Calendar = React.memo(({ isAdmin = false }) => {
     return (
       <div className="p-4">
         <div className="flex flex-col items-center justify-center h-64 bg-white rounded-lg shadow-lg gap-4">
-          <p className="text-gray-600 text-lg">Нет домиков</p>
+          <p className="text-gray-700 text-lg">Нет домиков</p>
           <button
             type="button"
             onClick={() => setShowAddHouseModal(true)}
-            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors"
+            className="bg-brand-charcoal hover:bg-brand-slate text-brand-silver px-4 py-2 rounded-lg transition-colors"
           >
             Добавить домик
           </button>
@@ -383,7 +383,7 @@ const Calendar = React.memo(({ isAdmin = false }) => {
 
       {/* Блок с месячным доходом — только для админа */}
       {isAdmin && (
-        <div className="mb-6 bg-gradient-to-r from-blue-500 to-blue-600 rounded-lg shadow-lg p-4 text-white">
+        <div className="mb-6 bg-gradient-to-r from-brand-charcoal to-brand-slate rounded-lg shadow-lg p-4 text-brand-silver">
           <div className="flex flex-col md:flex-row justify-between items-center gap-4">
             <div>
               <h2 className="text-sm font-medium opacity-90">

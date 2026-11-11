@@ -58,7 +58,7 @@ const AddHouseModal = ({ onClose, onCreated }) => {
             <button
               type="submit"
               disabled={loading}
-              className="flex-1 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50"
+              className="flex-1 bg-brand-charcoal text-white px-4 py-2 rounded-lg hover:bg-brand-slate disabled:opacity-50"
             >
               {loading ? 'Добавление...' : 'Добавить'}
             </button>

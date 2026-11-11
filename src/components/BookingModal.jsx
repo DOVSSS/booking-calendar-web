@@ -2,6 +2,7 @@ import React, { useState, useCallback } from 'react';
 import { doc, deleteDoc } from 'firebase/firestore';
 import { db } from '../firebase/config';
 import AddBookingModal from './AddBookingModal';
+import BrandLogo from './BrandLogo';
 
 const BookingModal = React.memo(({ booking, onClose, houseName, houseId }) => {
   const [showEditModal, setShowEditModal] = useState(false);
@@ -43,11 +44,11 @@ const BookingModal = React.memo(({ booking, onClose, houseName, houseId }) => {
     <>
       <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-3 z-50">
         <div className="bg-white rounded-xl w-full max-w-md max-h-[90vh] overflow-y-auto shadow-2xl">
-          <div className="sticky top-0 bg-white border-b px-5 py-4 flex justify-between items-center">
-            <h2 className="text-lg font-bold text-gray-800">Информация о брони</h2>
+          <div className="sticky top-0 bg-brand-charcoal px-5 py-4 flex justify-between items-center">
+            <BrandLogo size="sm" />
             <button
               onClick={onClose}
-              className="text-gray-400 hover:text-gray-600 transition-colors"
+              className="text-brand-muted hover:text-white transition-colors"
             >
               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -56,12 +57,12 @@ const BookingModal = React.memo(({ booking, onClose, houseName, houseId }) => {
           </div>
 
           <div className="p-5 space-y-4">
-            {houseName && (
-              <div className="bg-blue-50 rounded-lg p-3">
-                <label className="text-xs text-blue-600 uppercase tracking-wider">Домик</label>
-                <p className="font-medium text-gray-800 text-base mt-1">{houseName}</p>
-              </div>
-            )}
+            <div>
+              <h2 className="text-lg font-bold text-gray-800">Информация о брони</h2>
+              {houseName && (
+                <p className="text-sm text-gray-500 mt-0.5">{houseName}</p>
+              )}
+            </div>
 
             {/* Имя */}
             <div className="bg-gray-50 rounded-lg p-3">
@@ -90,8 +91,8 @@ const BookingModal = React.memo(({ booking, onClose, houseName, houseId }) => {
             </div>
 
             {/* Финансы */}
-            <div className="bg-blue-50 rounded-lg p-3">
-              <label className="text-xs text-blue-600 uppercase tracking-wider">Финансы</label>
+            <div className="bg-gray-50 rounded-lg p-3">
+              <label className="text-xs text-gray-500 uppercase tracking-wider">Финансы</label>
               <div className="mt-2 space-y-1">
                 <div className="flex justify-between items-center">
                   <span className="text-sm text-gray-600">Предоплата:</span>
@@ -99,9 +100,9 @@ const BookingModal = React.memo(({ booking, onClose, houseName, houseId }) => {
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-sm text-gray-600">Доплата при въезде:</span>
-                  <span className="font-medium text-blue-600">{formatMoney(booking.finalPayment || 0)}</span>
+                  <span className="font-medium text-gray-800">{formatMoney(booking.finalPayment || 0)}</span>
                 </div>
-                <div className="border-t border-blue-200 pt-2 mt-2 flex justify-between items-center">
+                <div className="border-t border-gray-200 pt-2 mt-2 flex justify-between items-center">
                   <span className="text-sm font-semibold text-gray-700">Общая сумма:</span>
                   <span className="font-bold text-gray-900">{formatMoney(totalPayment)}</span>
                 </div>

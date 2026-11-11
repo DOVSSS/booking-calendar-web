@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { collection, addDoc, Timestamp } from 'firebase/firestore';
 import { db } from './firebase/config';
+import BrandLogo from './components/BrandLogo';
 
 const ReviewPage = () => {
   const [name, setName] = useState('');
@@ -41,22 +42,25 @@ const ReviewPage = () => {
 
   if (submitted) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50 flex items-center justify-center p-4">
-        <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-8 text-center">
+      <div className="min-h-screen bg-brand-dark flex items-center justify-center p-4">
+        <div className="bg-brand-charcoal rounded-2xl shadow-2xl max-w-md w-full p-8 text-center border border-white/10">
           <div className="text-6xl mb-4">🎉</div>
-          <h2 className="text-2xl font-bold text-gray-800 mb-2">Спасибо за отзыв!</h2>
-          <p className="text-gray-600">Ваше мнение очень важно для нас. Мы обязательно учтём ваши пожелания.</p>
+          <h2 className="text-2xl font-bold text-brand-silver mb-2">Спасибо за отзыв!</h2>
+          <p className="text-brand-muted">Ваше мнение очень важно для нас. Мы обязательно учтём ваши пожелания.</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-brand-dark flex items-center justify-center p-4">
       <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-8">
+        <div className="flex justify-center mb-4">
+          <BrandLogo size="md" variant="light" />
+        </div>
         <div className="text-center mb-6">
           <h1 className="text-2xl font-bold text-gray-800">Оставить отзыв</h1>
-          <p className="text-gray-500 text-sm mt-1">Поделитесь впечатлениями о проживании</p>
+          <p className="text-gray-500 text-sm mt-1">Поделитесь впечатлениями о проживании в RESIDENCE</p>
         </div>
 
         {error && (
@@ -111,7 +115,7 @@ const ReviewPage = () => {
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-gradient-to-r from-blue-500 to-purple-500 text-white font-semibold py-3 rounded-xl hover:from-blue-600 hover:to-purple-600 transition-all disabled:opacity-50"
+            className="w-full bg-brand-charcoal hover:bg-brand-slate text-brand-silver font-semibold py-3 rounded-xl transition-all disabled:opacity-50"
           >
             {loading ? 'Отправка...' : '✉️ Отправить отзыв'}
           </button>
